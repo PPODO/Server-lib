@@ -34,8 +34,6 @@
 
 #folder
 Server-lib/.vs/
-Server-lib/x64/Debug
-Server-lib/x64/Release
 
 #file
 Server-lib/*.sln
