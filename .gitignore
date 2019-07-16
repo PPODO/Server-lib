@@ -34,6 +34,8 @@
 
 #folder
 Server-lib/.vs/
+Server-lib/x64/
+Server-lib/Server-lib/x64
 
 #file
 Server-lib/*.sln
