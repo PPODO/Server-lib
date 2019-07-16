@@ -3,9 +3,8 @@
 #include <Windows.h>
 #include <DbgHelp.h>
 
-typedef bool (WINAPI *MINIDUMPWRITEDUMP)(HANDLE hProcess, DWORD ProcessID, HANDLE hFile, MINIDUMP_TYPE DumpType, const PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam, const PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam, const PMINIDUMP_CALLBACK_INFORMATION CallBackParam);
-
 class CMiniDump {
+	typedef bool (WINAPI *MINIDUMPWRITEDUMP)(HANDLE hProcess, DWORD ProcessID, HANDLE hFile, MINIDUMP_TYPE DumpType, const PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam, const PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam, const PMINIDUMP_CALLBACK_INFORMATION CallBackParam);
 private:
 	LPTOP_LEVEL_EXCEPTION_FILTER m_PrevExceptionFilter;
 

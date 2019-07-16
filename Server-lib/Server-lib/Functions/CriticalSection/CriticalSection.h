@@ -1,40 +1,47 @@
 #pragma once
 #include <Windows.h>
 
-class CriticalSection {
+class CCriticalSection {
 private:
 	CRITICAL_SECTION m_CriticalSection;
 
+private:
+	bool m_bIsLock;
+
 public:
-	CriticalSection() {
+	CCriticalSection() {
 		InitializeCriticalSection(&m_CriticalSection);
 	}
 
-	~CriticalSection() {
+	~CCriticalSection() {
 		DeleteCriticalSection(&m_CriticalSection);
 	}
 
 public:
 	inline void Lock() {
 		EnterCriticalSection(&m_CriticalSection);
+		m_bIsLock = true;
 	}
 
 	inline void UnLock() {
+		m_bIsLock = false;
 		LeaveCriticalSection(&m_CriticalSection);
 	}
 
+	inline bool IsLocked() const { return m_bIsLock; }
+
 };
 
-class CriticalSectionGuard {
+class CCriticalSectionGuard {
 private:
-	CriticalSection& m_CriticalSection;
+	CCriticalSection& m_CriticalSection;
 
 public:
-	CriticalSectionGuard(CriticalSection& _CriticalSection) : m_CriticalSection(_CriticalSection) {
+	CCriticalSectionGuard(CCriticalSection& _CriticalSection) : m_CriticalSection(_CriticalSection) {
 		m_CriticalSection.Lock();
 	}
 
-	~CriticalSectionGuard() {
+	~CCriticalSectionGuard() {
 		m_CriticalSection.UnLock();
 	}
 };

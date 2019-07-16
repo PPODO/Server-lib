@@ -2,11 +2,12 @@
 #include <iostream>
 #include <fstream>
 #include <Windows.h>
+#include "../ThreadSync/ThreadSync.h"
 
 #define MAX_BUFFER_LENGTH 256
 #define MAX_DATETIME_LENGTH 32
 
-class CLog {
+class CLog : public CMultiThreadSync<CLog> {
 private:
 	inline static bool Write(bool bIsUnicode, const void* LogData) {
 		SYSTEMTIME SysTime;
@@ -63,6 +64,8 @@ private:
 
 public:
 	static bool WriteLog(LPCTSTR Data, ...) {
+		CThreadSync Sync;
+
 		TCHAR Log[MAX_BUFFER_LENGTH] = { L"\0" };
 
 		va_list ArgcList;
@@ -74,6 +77,8 @@ public:
 	}
 
 	static bool WriteLog(LPCSTR Data, ...) {
+		CThreadSync Sync;
+
 		CHAR Log[MAX_BUFFER_LENGTH] = { "\0" };
 
 		va_list ArgcList;
