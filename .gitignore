@@ -30,3 +30,13 @@
 *.exe
 *.out
 *.app
+
+
+#folder
+Server-lib/.vs/
+
+#file
+Server-lib/*.sln
+Server-lib/Server-lib/*.vcxproj
+Server-lib/Server-lib/*.vcxproj.filters
+Server-lib/Server-lib/*.vcxproj.user
