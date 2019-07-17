@@ -13,19 +13,25 @@ private:
 public:
 	class CThreadSync {
 	private:
-		CCriticalSection& m_CriticalSection;
+		CCriticalSection* m_CriticalSection;
 	public:
-		CThreadSync() {
+		// 해당 타입의 모든 오브젝트에 Lock을 건다.
+		CThreadSync() : m_CriticalSection(nullptr) {
 			T::m_CriticalSectionForAllObject.Lock();
 		}
 
-		CThreadSync(CMultiThreadSync* const MultiThreadSyncPtr) : m_CriticalSection(MultiThreadSyncPtr->m_CriticalSectionForOnlyThisObject) {
-			m_CriticalSection.Lock();
+		// 해당 오브젝트에만 Lock을 건다.
+		CThreadSync(CMultiThreadSync* const MultiThreadSyncPtr) : m_CriticalSection(&MultiThreadSyncPtr->m_CriticalSectionForOnlyThisObject) {
+			if (m_CriticalSection) {
+				m_CriticalSection->Lock();
+			}
 		}
 
+		CThreadSync(CMultiThreadSync<T>::CThreadSync&) = delete;
+
 		~CThreadSync() {
-			if (m_CriticalSection.IsLocked()) {
-				m_CriticalSection.UnLock();
+			if (m_CriticalSection && m_CriticalSection->IsLocked()) {
+				m_CriticalSection->UnLock();
 			}
 			else {
 				T::m_CriticalSectionForAllObject.UnLock();
