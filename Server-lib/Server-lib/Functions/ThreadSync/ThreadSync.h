@@ -29,7 +29,7 @@ public:
 
 		CThreadSync(CMultiThreadSync<T>::CThreadSync&) = delete;
 
-		~CThreadSync() {
+		virtual ~CThreadSync() {
 			if (m_CriticalSection && m_CriticalSection->IsLocked()) {
 				m_CriticalSection->UnLock();
 			}

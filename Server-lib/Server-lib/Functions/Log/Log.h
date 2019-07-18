@@ -28,7 +28,7 @@ private:
 			}
 
 			FileStream << L'[' << CurrentDate << L"] " << reinterpret_cast<const char*>(Log) << '\n';
-			swprintf_s(DebugLog, MAX_BUFFER_LENGTH, L"[%s] %S\n", CurrentDate, reinterpret_cast<const char*>(Log));
+			swprintf_s(DebugLog, MAX_BUFFER_LENGTH, L"[%s] %s\n", CurrentDate, Log);
 
 			FileStream.close();
 

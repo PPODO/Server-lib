@@ -7,6 +7,7 @@
 
 class CSocketAddress {
 	friend class CTCPIPSocket;
+	friend class CUDPIPSocket;
 private:
 	sockaddr m_Address;
 
@@ -14,6 +15,10 @@ private:
 	inline sockaddr_in* GetSockAddrIn() { return reinterpret_cast<sockaddr_in*>(&m_Address); }
 
 public:
+	CSocketAddress() {
+		ZeroMemory(&m_Address, GetSize());
+	};
+
 	CSocketAddress(const UINT16& Port) {
 		GetSockAddrIn()->sin_family = AF_INET;
 		GetSockAddrIn()->sin_port = htons(Port);
