@@ -7,12 +7,12 @@
 #include <thread>
 
 class CNetworkBase : public CMultiThreadSync<CNetworkBase> {
-private:
+public:
 	OVERLAPPED_EX m_AcceptOveralapped;
 	OVERLAPPED_EX m_ReciveDataOverlapped;
 	OVERLAPPED_EX m_SendDataOverlapped;
 
-private:
+public:
 	CTCPIPSocket m_TCPSocket;
 	CUDPIPSocket m_UDPSocket;
 
@@ -23,24 +23,23 @@ public:
 	CNetworkBase();
 	virtual ~CNetworkBase();
 
+protected:
+	bool ReadIOCP(CHAR* InData, const UINT16& DataLength);
+	bool ReadSelect(CHAR* InData, UINT16& RecvLength);
+
 public:
 	virtual void Initialize();
+	virtual bool Initialize(const CNetworkBase* const ListenSocket);
 	virtual void Clear();
 
 public:
-	virtual void OnIOAccept() = 0;
-	virtual void OnIODisconnect() = 0;
-	virtual void OnIORecive() = 0;
-	virtual void OnIOSend() = 0;
+	virtual bool OnIOConnect();
+	virtual bool OnIODisconnect() = 0;
 
 public:
-	// For Server
-	bool InitializeSocket(const IPPROTO& ProtocolType, const CSocketAddress& BindAddress);
-
-	// For Client
-	bool Accept(const SOCKET& ListenSocket);
+	bool InitializeSocket(const bool& bIsClient, const IPPROTO& ProtocolType, const CSocketAddress& Address);
 
 public:
-	CTCPIPSocket* const GetTCPIPSocket() { return &m_TCPSocket; }
+	SOCKET GetSocket(const IPPROTO& ProtocolType) { return (ProtocolType == IPPROTO_TCP ? m_TCPSocket.GetSocket() : (ProtocolType == IPPROTO_UDP ? m_UDPSocket.GetSocket() : INVALID_SOCKET)); }
 
 };

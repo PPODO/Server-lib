@@ -1,9 +1,20 @@
 #include "PacketBase.h"
 
+void CPacketBase::GetPacket() {
+}
+
 void CPacketBase::Initialize() {
 	CNetworkBase::Initialize();
 
 	ZeroMemory(m_PacketBuffer, ::MAX_PACKET_BUFFER_LENGTH);
+}
+
+bool CPacketBase::Initialize(const CNetworkBase* const ListenSocket) {
+	if (!CNetworkBase::Initialize(ListenSocket)) {
+		return false;
+	}
+
+	return true;
 }
 
 void CPacketBase::Clear() {
@@ -12,14 +23,12 @@ void CPacketBase::Clear() {
 	ZeroMemory(m_PacketBuffer, ::MAX_PACKET_BUFFER_LENGTH);
 }
 
-void CPacketBase::OnIOAccept() {
+bool CPacketBase::OnIOConnect() {
+	
+	return CNetworkBase::OnIOConnect();
 }
 
-void CPacketBase::OnIODisconnect() {
-}
+bool CPacketBase::OnIODisconnect() {
 
-void CPacketBase::OnIORecive() {
-}
-
-void CPacketBase::OnIOSend() {
+	return true;
 }

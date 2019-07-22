@@ -1,128 +1,157 @@
 #include "TCPIPSocket.h"
 #include "../../../Functions/Log/Log.h"
 
-CTCPIPSocket::CTCPIPSocket() : m_Socket(INVALID_SOCKET) {}
+CTCPIPSocket::CTCPIPSocket() : m_Socket(INVALID_SOCKET) { ZeroMemory(m_ReciveBuffer, MAX_RECIVE_BUFFER_LENGTH); }
 
 CTCPIPSocket::~CTCPIPSocket() {}
 
 bool CTCPIPSocket::BindTCP() {
 	if (m_Socket != INVALID_SOCKET) {
-		CLog::WriteLog(L"TCP Socket is already exist!");
+		CLog::WriteLog(L"Bind - TCP Socket Is Already Exist!");
+		return false;
+	}
+	if ((m_Socket = CSocketUtil::CreateTCPSocket()) == INVALID_SOCKET) {
+		CLog::WriteLog(L"Bind - Create TCP Socket Is Failure!");
 		return false;
 	}
 
-	m_Socket = CSocketUtil::CreateTCPSocket();
-	if (m_Socket == INVALID_SOCKET) {
-		CLog::WriteLog(L"Bind TCP Socket Failure!");
-		return false;
-	}
-
-	ZeroMemory(m_ReciveBuffer, MAX_RECIVE_BUFFER_LENGTH);
-
-	CLog::WriteLog(L"Bind TCP Socket Successful!");
+	CLog::WriteLog(L"Bind - Create TCP Socket Is Successful!");
 	return true;
 }
 
-bool CTCPIPSocket::Connect(const CSocketAddress& ConnectionAddress) {
-	if (m_Socket == INVALID_SOCKET) {
-		CLog::WriteLog(L"Connection Failure! - Socket is invalid");
+bool CTCPIPSocket::Listen(const CSocketAddress & ListenAddress, const UINT16 & BackLogCount) {
+	if (m_Socket == INVALID_SOCKET || BackLogCount <= 0) {
+		CLog::WriteLog(L"Listen - Listen Socket is Invalid or BackLog Count less than 0");
 		return false;
 	}
-
-	INT Result =  WSAConnect(m_Socket, &ConnectionAddress.m_Address, ConnectionAddress.GetSize(), nullptr, nullptr, nullptr, nullptr);
-	if (Result != WSAEWOULDBLOCK) {
+	if (bind(m_Socket, &ListenAddress.m_Address, ListenAddress.GetSize()) == SOCKET_ERROR) {
+		CLog::WriteLog(L"Listen - Bind Socket Is Failure!");
 		return false;
 	}
-
-	CLog::WriteLog(L"Connection Successful!");
-	return true;
-}
-
-bool CTCPIPSocket::Listen(const CSocketAddress& BindAddress, const INT& BackLogCount) {
-	if (m_Socket == INVALID_SOCKET && BackLogCount <= 0) {
-		CLog::WriteLog(L"Listen Failure! - Socket is invalid or BackLog Count is less or same than 0");
-		return false;
-	}
-
-	if (bind(m_Socket, &BindAddress.m_Address, BindAddress.GetSize()) == SOCKET_ERROR) {
-		CLog::WriteLog(L"bind Failure! - %d", WSAGetLastError());
-		return false;
-	}
-
 	if (listen(m_Socket, BackLogCount) == SOCKET_ERROR) {
-		CLog::WriteLog(L"listen Failure! - %d", WSAGetLastError());
+		CLog::WriteLog(L"Listen - Listen Socket Is Failure!");
 		return false;
 	}
 
-	CLog::WriteLog(L"Listen Successful!");
+	CLog::WriteLog(L"Listen - Listen Socket Is Successful!");
 	return true;
 }
 
-bool CTCPIPSocket::Accept(const SOCKET & ListenSocket, OVERLAPPED_EX& AcceptOverlapped) {
-	if (ListenSocket == INVALID_SOCKET) {
-		CLog::WriteLog(L"Accept Failure! - Listen Socket is invalid");
+bool CTCPIPSocket::Connect(const CSocketAddress & ConnectionAddress) {
+	if (m_Socket == INVALID_SOCKET) {
+		CLog::WriteLog(L"Connect - Socket Is Invalid!");
+		return false;
+	}
+
+	if (WSAConnect(m_Socket, &ConnectionAddress.m_Address, ConnectionAddress.GetSize(), nullptr, nullptr, 0, 0) == SOCKET_ERROR) {
+		if (WSAGetLastError() != WSAEWOULDBLOCK) {
+			CLog::WriteLog(L"Connect - Connection Failure : %d", WSAGetLastError());
+			return false;
+		}
+	}
+
+	CLog::WriteLog(L"Connet - Succeed To Connect the Server");
+	return true;
+}
+
+bool CTCPIPSocket::Accept(const CTCPIPSocket & ListenSocket, OVERLAPPED_EX & AcceptOverlapped) {
+	if (ListenSocket.m_Socket == INVALID_SOCKET) {
+		CLog::WriteLog(L"Accept - Listen Socket Is Invalid!");
 		return false;
 	}
 	if (m_Socket != INVALID_SOCKET) {
-		CLog::WriteLog(L"Accept Failure! - Socket is exist");
+		CLog::WriteLog(L"Accept - Accept Socket Is Already Initialized!");
+		return false;
+	}
+	
+	if ((m_Socket = CSocketUtil::CreateTCPSocket()) == INVALID_SOCKET) {
+		CLog::WriteLog(L"Accept - Create Accept Socket Is Failure!");
 		return false;
 	}
 
-	m_Socket = CSocketUtil::CreateTCPSocket();
-
-	if (!AcceptEx(ListenSocket, m_Socket, nullptr, 0, CSocketAddress::GetSize() + 16, CSocketAddress::GetSize() + 16, nullptr, &AcceptOverlapped.m_Overlapped)) {
+	if (!AcceptEx(ListenSocket.m_Socket, m_Socket, m_ReciveBuffer, 0, CSocketAddress::GetSize() + 16, CSocketAddress::GetSize() + 16, nullptr, &AcceptOverlapped.m_Overlapped)) {
 		if (WSAGetLastError() != WSAEWOULDBLOCK && WSAGetLastError() != WSA_IO_PENDING) {
-			CLog::WriteLog(L"Accept Failure! - %d", WSAGetLastError());
+			CLog::WriteLog(L"Accept - AcceptEx Failure! : %d", WSAGetLastError());
 			return false;
 		}
 	}
 	return true;
 }
 
-bool CTCPIPSocket::Read(struct OVERLAPPED_EX& ReciveOverlapped) {
-	if (m_Socket == INVALID_SOCKET) {
-		return false;
-	}
-
-	DWORD RecvBytes = 0, Flag = 0;
-
-	WSABUF RecvBuffer;
-	RecvBuffer.buf = reinterpret_cast<CHAR*>(m_ReciveBuffer);
-	RecvBuffer.len = MAX_RECIVE_BUFFER_LENGTH;
-
-	if (WSARecv(m_Socket, &RecvBuffer, 1, &RecvBytes, &Flag, &ReciveOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
-		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
-			return true;
-		}
-	}
-	return false;
-}
-
-bool CTCPIPSocket::Write(const CHAR* Data, const UINT16& DataLength, struct OVERLAPPED_EX& SendOverlapped) {
-	if (m_Socket == INVALID_SOCKET || !Data || DataLength <= 0) {
-		return false;
-	}
-
-	DWORD SendBytes = 0;
-
-	WSABUF SendBuffer;
-	SendBuffer.buf = const_cast<CHAR*>(Data);
-	SendBuffer.len = DataLength;
-
-	if (WSASend(m_Socket, &SendBuffer, 1, &SendBytes, 0, &SendOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
-		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
-			return true;
-		}
-	}
-	return false;
-}
-
-void CTCPIPSocket::Shutdown() {
+bool CTCPIPSocket::Shutdown() {
 	if (m_Socket != INVALID_SOCKET) {
 		shutdown(m_Socket, SD_BOTH);
 		closesocket(m_Socket);
 		m_Socket = INVALID_SOCKET;
+		CLog::WriteLog(L"HI");
+	}
+	return true;
+}
+
+bool CTCPIPSocket::InitializeRecvBuffer_IOCP(struct OVERLAPPED_EX& RecvOverlapped) {
+	DWORD RecvBytes = 0, Flag = 0;
+	WSABUF RecvBuffer;
+	RecvBuffer.buf = m_ReciveBuffer;
+	RecvBuffer.len = MAX_RECIVE_BUFFER_LENGTH;
+
+	if (WSARecv(m_Socket, &RecvBuffer, 1, &RecvBytes, &Flag, &RecvOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
+		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
+			CLog::WriteLog(L"Recv - WSARecv Failure! : %d", WSAGetLastError());
+			return false;
+		}
+	}
+	return true;
+}
+
+bool CTCPIPSocket::CopyRecvBuffer_IOCP(CHAR * InData, const UINT16 & DataLength) {
+	if (!InData || DataLength <= 0) {
+		CLog::WriteLog(L"Recv - InData Buffer Is Invalid or DataLength <= 0");
+		return false;
 	}
 
-	ZeroMemory(m_ReciveBuffer, MAX_RECIVE_BUFFER_LENGTH);
+	CopyMemory(InData, m_ReciveBuffer, DataLength);
+	return true;
+}
+
+bool CTCPIPSocket::ReadRecvBuffer_Select(CHAR * InData, UINT16 & RecvLength, struct OVERLAPPED_EX& RecvOverlapped) {
+	if (!InData) {
+		CLog::WriteLog(L"Recv - InData Buffer Is Invalid");
+		return false;
+	}
+
+	DWORD RecvBytes = 0, Flag = 0;
+	WSABUF RecvBuffer;
+	RecvBuffer.buf = InData;
+	RecvBuffer.len = MAX_RECIVE_BUFFER_LENGTH;
+
+	if (WSARecv(m_Socket, &RecvBuffer, 1, &RecvBytes, &Flag, &RecvOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
+		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
+			CLog::WriteLog(L"Recv - WSARecv Failure! : %d", WSAGetLastError());
+			return false;
+		}
+	}
+
+	CopyMemory(InData, m_ReciveBuffer, RecvBytes);
+	RecvLength = RecvBytes;
+	return true;
+}
+
+bool CTCPIPSocket::Write(const CHAR * OutData, const UINT16 & DataLength, struct OVERLAPPED_EX& SendOverlapped) {
+	if (!OutData || DataLength <= 0) {
+		CLog::WriteLog(L"Send - OutData Buffer Is Invalid or DataLength <= 0");
+		return false;
+	}
+
+	DWORD SendBytes = 0;
+	WSABUF SendBuffer;
+	SendBuffer.buf = const_cast<CHAR*>(OutData);
+	SendBuffer.len = DataLength;
+
+	if (WSASend(m_Socket, &SendBuffer, 1, &SendBytes, 0, &SendOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
+		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
+			CLog::WriteLog(L"Send - WSASend Failure! : %d", WSAGetLastError());
+			return false;
+		}
+	}
+	return true;
 }

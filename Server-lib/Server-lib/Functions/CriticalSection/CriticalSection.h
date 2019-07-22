@@ -5,9 +5,6 @@ class CCriticalSection {
 private:
 	CRITICAL_SECTION m_CriticalSection;
 
-private:
-	bool m_bIsLock;
-
 public:
 	CCriticalSection() {
 		InitializeCriticalSection(&m_CriticalSection);
@@ -20,15 +17,11 @@ public:
 public:
 	inline void Lock() {
 		EnterCriticalSection(&m_CriticalSection);
-		m_bIsLock = true;
 	}
 
 	inline void UnLock() {
-		m_bIsLock = false;
 		LeaveCriticalSection(&m_CriticalSection);
 	}
-
-	inline bool IsLocked() const { return m_bIsLock; }
 
 };
 

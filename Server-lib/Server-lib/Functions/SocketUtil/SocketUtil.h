@@ -15,7 +15,7 @@ enum class EIOTYPE : UCHAR {
 struct OVERLAPPED_EX {
 	WSAOVERLAPPED m_Overlapped;
 	EIOTYPE m_IOType;
-	void* Owner;
+	void* m_Owner;
 };
 
 class CSocketUtil {

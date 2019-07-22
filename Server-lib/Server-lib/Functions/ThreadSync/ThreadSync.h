@@ -1,5 +1,6 @@
 #pragma once
 #include "../CriticalSection/CriticalSection.h"
+#include <iostream>
 
 template<typename T>
 class CMultiThreadSync {
@@ -30,7 +31,7 @@ public:
 		CThreadSync(CMultiThreadSync<T>::CThreadSync&) = delete;
 
 		virtual ~CThreadSync() {
-			if (m_CriticalSection && m_CriticalSection->IsLocked()) {
+			if (m_CriticalSection) {
 				m_CriticalSection->UnLock();
 			}
 			else {

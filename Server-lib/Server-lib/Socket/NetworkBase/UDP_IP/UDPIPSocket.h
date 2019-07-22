@@ -22,4 +22,7 @@ public:
 	bool RecvFrom(struct OVERLAPPED_EX& ReciveOverlapped);
 	void Shutdown();
 
+public:
+	SOCKET GetSocket() const { return m_Socket; }
+
 };

@@ -1,6 +1,7 @@
 #include "UDPIPSocket.h"
 
 CUDPIPSocket::CUDPIPSocket() {
+	ZeroMemory(m_ReciveBuffer, MAX_RECIVE_BUFFER_LENGTH);
 }
 
 CUDPIPSocket::~CUDPIPSocket() {

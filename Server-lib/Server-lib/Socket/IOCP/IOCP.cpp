@@ -68,11 +68,11 @@ bool CIOCP::Destroy() {
 
 void CIOCP::WorkerThreadCallback() {
 	DWORD RecvBytes = 0;
-	OVERLAPPED_EX Overlapped;
+	OVERLAPPED_EX* Overlapped;
 	void* CompletionKey = nullptr;
 
 	while (true) {
-		bool Succeed = GetQueuedCompletionStatus(m_hIOCP, &RecvBytes, reinterpret_cast<PULONG_PTR>(CompletionKey), reinterpret_cast<LPOVERLAPPED*>(&Overlapped), INFINITE);
+		bool Succeed = GetQueuedCompletionStatus(m_hIOCP, &RecvBytes, reinterpret_cast<PULONG_PTR>(&CompletionKey), reinterpret_cast<LPOVERLAPPED*>(&Overlapped), INFINITE);
 
 		// Destroy 함수의 PostQueuedCompletionStatus에서 nullptr 값이 넘어옴. 
 		if (!CompletionKey) {
@@ -81,23 +81,23 @@ void CIOCP::WorkerThreadCallback() {
 		}
 
 		if (!Succeed || (Succeed && RecvBytes <= 0)) {
-			if (Overlapped.m_IOType == EIOTYPE::EIOTYPE_ACCEPT) {
+			if (Overlapped->m_IOType == EIOTYPE::EIOTYPE_ACCEPT) {
+				OnIOConnect(Overlapped->m_Owner);
 				CLog::WriteLog(L"Accept New Client!");
-				// Register
 			}
 			else {
+				OnIODisconnect(Overlapped->m_Owner);
 				CLog::WriteLog(L"Disconnect Client!");
-				// Dis
 			}
 			continue;
 		}
 
-		switch (Overlapped.m_IOType) {
+		switch (Overlapped->m_IOType) {
 		case EIOTYPE::EIOTYPE_READ:
-
+			OnIORecive(Overlapped->m_Owner, RecvBytes);
 			break;
 		case EIOTYPE::EIOTYPE_WRITE:
-
+			OnIOWrite(Overlapped->m_Owner);
 			break;
 		}
 	}

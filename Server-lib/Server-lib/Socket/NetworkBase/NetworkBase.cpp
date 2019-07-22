@@ -17,29 +17,47 @@ void CNetworkBase::Initialize() {
 	m_ReciveDataOverlapped.m_IOType = EIOTYPE::EIOTYPE_READ;
 	m_SendDataOverlapped.m_IOType = EIOTYPE::EIOTYPE_WRITE;
 
-	m_AcceptOveralapped.Owner = m_ReciveDataOverlapped.Owner = m_SendDataOverlapped.Owner = this;
+	m_AcceptOveralapped.m_Owner = m_ReciveDataOverlapped.m_Owner = m_SendDataOverlapped.m_Owner = this;
+}
+
+bool CNetworkBase::Initialize(const CNetworkBase* const ListenSocket) {
+	CThreadSync Sync(this);
+
+	if (!ListenSocket) {
+		return false;
+	}
+	Initialize();
+
+	return m_TCPSocket.Accept(ListenSocket->m_TCPSocket, m_AcceptOveralapped);
 }
 
 void CNetworkBase::Clear() {
 	CThreadSync Sync(this);
 
 	m_TCPSocket.Shutdown();
-	Initialize();
+	m_UDPSocket.Shutdown();
 }
 
-bool CNetworkBase::InitializeSocket(const IPPROTO& ProtocolType, const CSocketAddress& BindAddress) {
-	CThreadSync Sync(this);
+bool CNetworkBase::OnIOConnect() {
+	return m_TCPSocket.InitializeRecvBuffer_IOCP(m_ReciveDataOverlapped);
+}
 
-	switch (ProtocolType) {
-	case IPPROTO::IPPROTO_TCP:
-		return m_TCPSocket.BindTCP() && m_TCPSocket.Listen(BindAddress, SOMAXCONN);
-	case IPPROTO::IPPROTO_UDP:
-		return m_UDPSocket.BindUDP(BindAddress);
-	default:
-		return false;
+bool CNetworkBase::InitializeSocket(const bool& bIsClient, const IPPROTO & ProtocolType, const CSocketAddress & Address) {
+	if (ProtocolType == IPPROTO_UDP) {
+		return m_UDPSocket.BindUDP(Address);
 	}
+	else if(ProtocolType == IPPROTO_TCP) {
+		return m_TCPSocket.BindTCP() && (bIsClient ? (m_TCPSocket.Connect(Address)) : m_TCPSocket.Listen(Address, SOMAXCONN));
+	}
+	return false;
 }
 
-bool CNetworkBase::Accept(const SOCKET & ListenSocket) {
-	return m_TCPSocket.Accept(ListenSocket, m_AcceptOveralapped);
+bool CNetworkBase::ReadIOCP(CHAR * InData, const UINT16 & DataLength) {
+	CThreadSync Sync(this);
+	return m_TCPSocket.CopyRecvBuffer_IOCP(InData, DataLength);
+}
+
+bool CNetworkBase::ReadSelect(CHAR * InData, UINT16 & RecvLength) {
+	CThreadSync Sync(this);
+	return m_TCPSocket.ReadRecvBuffer_Select(InData, RecvLength, m_ReciveDataOverlapped);
 }

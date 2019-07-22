@@ -17,11 +17,18 @@ public:
 
 public:
 	bool BindTCP();
+	bool Listen(const CSocketAddress& ListenAddress, const UINT16& BackLogCount);
 	bool Connect(const CSocketAddress& ConnectionAddress);
-	bool Listen(const CSocketAddress& BindAddress, const INT& BackLogCount);
-	bool Accept(const SOCKET& ListenSocket, struct OVERLAPPED_EX& AcceptOverlapped);
-	bool Read(struct OVERLAPPED_EX& ReciveOverlapped);
-	bool Write(const CHAR* Data, const UINT16& DataLength, struct OVERLAPPED_EX& SendOverlapped);
-	void Shutdown();
+	bool Accept(const CTCPIPSocket& ListenSocket, struct OVERLAPPED_EX& AcceptOverlapped);
+	bool Shutdown();
+
+public:
+	bool InitializeRecvBuffer_IOCP(struct OVERLAPPED_EX& RecvOverlapped);
+	bool CopyRecvBuffer_IOCP(CHAR* InData, const UINT16& DataLength);
+	bool ReadRecvBuffer_Select(CHAR* InData, UINT16& RecvLength, struct OVERLAPPED_EX& RecvOverlapped);
+	bool Write(const CHAR* OutData, const UINT16& DataLength, struct OVERLAPPED_EX& SendOverlapped);
+
+public:
+	SOCKET GetSocket() const { return m_Socket; }
 
 };
