@@ -9,7 +9,7 @@
 class CNetworkBase : public CMultiThreadSync<CNetworkBase> {
 public:
 	OVERLAPPED_EX m_AcceptOveralapped;
-	OVERLAPPED_EX m_ReciveDataOverlapped;
+	OVERLAPPED_EX m_ReceiveDataOverlapped;
 	OVERLAPPED_EX m_SendDataOverlapped;
 
 public:

@@ -9,7 +9,7 @@ private:
 	SOCKET m_Socket;
 
 private:
-	CHAR m_ReciveBuffer[MAX_RECIVE_BUFFER_LENGTH];
+	CHAR m_ReceiveBuffer[MAX_Receive_BUFFER_LENGTH];
 
 public:
 	CTCPIPSocket();

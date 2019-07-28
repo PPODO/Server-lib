@@ -1,7 +1,7 @@
 #include "TCPIPSocket.h"
 #include "../../../Functions/Log/Log.h"
 
-CTCPIPSocket::CTCPIPSocket() : m_Socket(INVALID_SOCKET) { ZeroMemory(m_ReciveBuffer, MAX_RECIVE_BUFFER_LENGTH); }
+CTCPIPSocket::CTCPIPSocket() : m_Socket(INVALID_SOCKET) { ZeroMemory(m_ReceiveBuffer, MAX_Receive_BUFFER_LENGTH); }
 
 CTCPIPSocket::~CTCPIPSocket() {}
 
@@ -69,7 +69,7 @@ bool CTCPIPSocket::Accept(const CTCPIPSocket & ListenSocket, OVERLAPPED_EX & Acc
 		return false;
 	}
 
-	if (!AcceptEx(ListenSocket.m_Socket, m_Socket, m_ReciveBuffer, 0, CSocketAddress::GetSize() + 16, CSocketAddress::GetSize() + 16, nullptr, &AcceptOverlapped.m_Overlapped)) {
+	if (!AcceptEx(ListenSocket.m_Socket, m_Socket, m_ReceiveBuffer, 0, CSocketAddress::GetSize() + 16, CSocketAddress::GetSize() + 16, nullptr, &AcceptOverlapped.m_Overlapped)) {
 		if (WSAGetLastError() != WSAEWOULDBLOCK && WSAGetLastError() != WSA_IO_PENDING) {
 			CLog::WriteLog(L"Accept - AcceptEx Failure! : %d", WSAGetLastError());
 			return false;
@@ -91,8 +91,8 @@ bool CTCPIPSocket::Shutdown() {
 bool CTCPIPSocket::InitializeRecvBuffer_IOCP(struct OVERLAPPED_EX& RecvOverlapped) {
 	DWORD RecvBytes = 0, Flag = 0;
 	WSABUF RecvBuffer;
-	RecvBuffer.buf = m_ReciveBuffer;
-	RecvBuffer.len = MAX_RECIVE_BUFFER_LENGTH;
+	RecvBuffer.buf = m_ReceiveBuffer;
+	RecvBuffer.len = MAX_Receive_BUFFER_LENGTH;
 
 	if (WSARecv(m_Socket, &RecvBuffer, 1, &RecvBytes, &Flag, &RecvOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
 		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
@@ -109,7 +109,7 @@ bool CTCPIPSocket::CopyRecvBuffer_IOCP(CHAR * InData, const UINT16 & DataLength)
 		return false;
 	}
 
-	CopyMemory(InData, m_ReciveBuffer, DataLength);
+	CopyMemory(InData, m_ReceiveBuffer, DataLength);
 	return true;
 }
 
@@ -122,7 +122,7 @@ bool CTCPIPSocket::ReadRecvBuffer_Select(CHAR * InData, UINT16 & RecvLength, str
 	DWORD RecvBytes = 0, Flag = 0;
 	WSABUF RecvBuffer;
 	RecvBuffer.buf = InData;
-	RecvBuffer.len = MAX_RECIVE_BUFFER_LENGTH;
+	RecvBuffer.len = MAX_Receive_BUFFER_LENGTH;
 
 	if (WSARecv(m_Socket, &RecvBuffer, 1, &RecvBytes, &Flag, &RecvOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
 		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
@@ -131,7 +131,7 @@ bool CTCPIPSocket::ReadRecvBuffer_Select(CHAR * InData, UINT16 & RecvLength, str
 		}
 	}
 
-	CopyMemory(InData, m_ReciveBuffer, RecvBytes);
+	CopyMemory(InData, m_ReceiveBuffer, RecvBytes);
 	RecvLength = RecvBytes;
 	return true;
 }

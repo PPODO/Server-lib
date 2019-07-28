@@ -10,14 +10,14 @@ void CNetworkBase::Initialize() {
 	CThreadSync Sync(this);
 
 	ZeroMemory(&m_AcceptOveralapped.m_Overlapped, sizeof(WSAOVERLAPPED));
-	ZeroMemory(&m_ReciveDataOverlapped.m_Overlapped, sizeof(WSAOVERLAPPED));
+	ZeroMemory(&m_ReceiveDataOverlapped.m_Overlapped, sizeof(WSAOVERLAPPED));
 	ZeroMemory(&m_SendDataOverlapped.m_Overlapped, sizeof(WSAOVERLAPPED));
 
 	m_AcceptOveralapped.m_IOType = EIOTYPE::EIOTYPE_ACCEPT;
-	m_ReciveDataOverlapped.m_IOType = EIOTYPE::EIOTYPE_READ;
+	m_ReceiveDataOverlapped.m_IOType = EIOTYPE::EIOTYPE_READ;
 	m_SendDataOverlapped.m_IOType = EIOTYPE::EIOTYPE_WRITE;
 
-	m_AcceptOveralapped.m_Owner = m_ReciveDataOverlapped.m_Owner = m_SendDataOverlapped.m_Owner = this;
+	m_AcceptOveralapped.m_Owner = m_ReceiveDataOverlapped.m_Owner = m_SendDataOverlapped.m_Owner = this;
 }
 
 bool CNetworkBase::Initialize(const CNetworkBase* const ListenSocket) {
@@ -39,7 +39,7 @@ void CNetworkBase::Clear() {
 }
 
 bool CNetworkBase::OnIOConnect() {
-	return m_TCPSocket.InitializeRecvBuffer_IOCP(m_ReciveDataOverlapped);
+	return m_TCPSocket.InitializeRecvBuffer_IOCP(m_ReceiveDataOverlapped);
 }
 
 bool CNetworkBase::InitializeSocket(const bool& bIsClient, const IPPROTO & ProtocolType, const CSocketAddress & Address) {
@@ -59,5 +59,5 @@ bool CNetworkBase::ReadIOCP(CHAR * InData, const UINT16 & DataLength) {
 
 bool CNetworkBase::ReadSelect(CHAR * InData, UINT16 & RecvLength) {
 	CThreadSync Sync(this);
-	return m_TCPSocket.ReadRecvBuffer_Select(InData, RecvLength, m_ReciveDataOverlapped);
+	return m_TCPSocket.ReadRecvBuffer_Select(InData, RecvLength, m_ReceiveDataOverlapped);
 }

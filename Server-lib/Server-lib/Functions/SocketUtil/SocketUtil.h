@@ -1,6 +1,6 @@
 #pragma once
 
-#define MAX_RECIVE_BUFFER_LENGTH 4096
+#define MAX_Receive_BUFFER_LENGTH 4096
 
 #include "../SocketAddress/SocketAddress.h"
 #include "../../Socket/NetworkBase/TCP_IP/TCPIPSocket.h"

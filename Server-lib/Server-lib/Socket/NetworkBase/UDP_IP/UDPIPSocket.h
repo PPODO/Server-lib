@@ -7,10 +7,10 @@ private:
 	SOCKET m_Socket;
 
 private:
-	CSocketAddress m_RecivedAddress;
+	CSocketAddress m_ReceivedAddress;
 
 private:
-	CHAR m_ReciveBuffer[MAX_RECIVE_BUFFER_LENGTH];
+	CHAR m_ReceiveBuffer[MAX_Receive_BUFFER_LENGTH];
 
 public:
 	CUDPIPSocket();
@@ -19,7 +19,7 @@ public:
 public:
 	bool BindUDP(const CSocketAddress& BindAddress);
 	bool SendTo(struct OVERLAPPED_EX& SendOverlapped);
-	bool RecvFrom(struct OVERLAPPED_EX& ReciveOverlapped);
+	bool RecvFrom(struct OVERLAPPED_EX& ReceiveOverlapped);
 	void Shutdown();
 
 public:

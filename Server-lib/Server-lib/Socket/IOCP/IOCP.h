@@ -13,7 +13,7 @@ private:
 protected:
 	virtual void OnIOConnect(void* Object) = 0;
 	virtual void OnIODisconnect(void* Object) = 0;
-	virtual void OnIORecive(void* Object, const UINT16& RecvBytes) = 0;
+	virtual void OnIOReceive(void* Object, const UINT16& RecvBytes) = 0;
 	virtual void OnIOWrite(void* Object) = 0;
 
 protected:

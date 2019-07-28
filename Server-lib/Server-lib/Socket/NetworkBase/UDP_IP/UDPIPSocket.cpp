@@ -1,7 +1,7 @@
 #include "UDPIPSocket.h"
 
 CUDPIPSocket::CUDPIPSocket() {
-	ZeroMemory(m_ReciveBuffer, MAX_RECIVE_BUFFER_LENGTH);
+	ZeroMemory(m_ReceiveBuffer, MAX_Receive_BUFFER_LENGTH);
 }
 
 CUDPIPSocket::~CUDPIPSocket() {
@@ -38,16 +38,16 @@ bool CUDPIPSocket::SendTo(struct OVERLAPPED_EX& SendOverlapped) {
 	return false;
 }
 
-bool CUDPIPSocket::RecvFrom(OVERLAPPED_EX & ReciveOverlapped) {
+bool CUDPIPSocket::RecvFrom(OVERLAPPED_EX & ReceiveOverlapped) {
 	DWORD RecvBytes = 0, Flag = 0;
 
 	WSABUF RecvFromBuffer;
-	RecvFromBuffer.buf = m_ReciveBuffer;
-	RecvFromBuffer.len = MAX_RECIVE_BUFFER_LENGTH;
+	RecvFromBuffer.buf = m_ReceiveBuffer;
+	RecvFromBuffer.len = MAX_Receive_BUFFER_LENGTH;
 
 	INT AddressPtr = CSocketAddress::GetSize();
 
-	if (WSARecvFrom(m_Socket, &RecvFromBuffer, 1, &RecvBytes, &Flag, &m_RecivedAddress.m_Address, &AddressPtr, &ReciveOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
+	if (WSARecvFrom(m_Socket, &RecvFromBuffer, 1, &RecvBytes, &Flag, &m_ReceivedAddress.m_Address, &AddressPtr, &ReceiveOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
 		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
 			return true;
 		}
