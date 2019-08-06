@@ -1,10 +1,10 @@
 #pragma once
 
-#define MAX_Receive_BUFFER_LENGTH 4096
+#define MAX_RECEIVE_BUFFER_LENGTH 4096
 
 #include "../SocketAddress/SocketAddress.h"
-#include "../../Socket/NetworkBase/TCP_IP/TCPIPSocket.h"
-#include "../../Socket/NetworkBase/UDP_IP/UDPIPSocket.h"
+#include "../../Network/PacketSession/NetworkSession/TCPIP/TCPIPSocket.h"
+//#include "../../Network/PacketSession/NetworkSession/UDPIP/UDPIPSocket.h"
 
 enum class EIOTYPE : UCHAR {
 	EIOTYPE_ACCEPT,

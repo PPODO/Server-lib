@@ -14,6 +14,20 @@ private:
 private:
 	inline sockaddr_in* GetSockAddrIn() { return reinterpret_cast<sockaddr_in*>(&m_Address); }
 
+private:
+	static inline in_addr* GetHostIPAddress() {
+		char HostName[32] = { "\0" };
+		if (gethostname(HostName, 32) == SOCKET_ERROR) {
+			CLog::WriteLog(L"Get Host Name is Failure! - %d", WSAGetLastError());
+			return nullptr;
+		}
+		if (hostent* HostInformation = gethostbyname(HostName)) {
+			return reinterpret_cast<in_addr*>(HostInformation->h_addr_list[0]);
+		}
+		CLog::WriteLog(L"Get Host Information is Failure! - %d", WSAGetLastError());
+		return nullptr;
+	}
+
 public:
 	CSocketAddress() {
 		ZeroMemory(&m_Address, GetSize());
@@ -22,6 +36,7 @@ public:
 	CSocketAddress(const UINT16& Port) {
 		GetSockAddrIn()->sin_family = AF_INET;
 		GetSockAddrIn()->sin_port = htons(Port);
+		GetSockAddrIn()->sin_addr = *GetHostIPAddress();
 		ZeroMemory(&GetSockAddrIn()->sin_zero, sizeof(GetSockAddrIn()->sin_zero));
 	};
 
@@ -39,5 +54,8 @@ public:
 
 public:
 	static size_t GetSize() { return sizeof(m_Address); }
+	static const char* const GetIPAddress() {
+		return reinterpret_cast<const char* const>(GetHostIPAddress());
+	}
 
 };

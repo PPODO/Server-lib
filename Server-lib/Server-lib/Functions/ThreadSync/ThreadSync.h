@@ -7,39 +7,24 @@ class CMultiThreadSync {
 	friend class CThreadSync;
 private:
 	// 해당 타입의 모든 오브젝트에 Lock을 건다.
-	static CCriticalSection m_CriticalSectionForAllObject;
-	// 해당 오브젝트에만 Lock을 건다.
-	CCriticalSection m_CriticalSectionForOnlyThisObject;
+	// 생각을 해보니, 스레드는 무조건 하나만 실행되므로, Lock을 어떻게 걸던 상관이 없다.
+	// 성능 차이는 없었기에, 해당 오브젝트에만 Lock을 걸어주는 부분은 삭제
+	static CCriticalSection m_CriticalSection;
 
 public:
 	class CThreadSync {
-	private:
-		CCriticalSection* m_CriticalSection;
 	public:
-		// 해당 타입의 모든 오브젝트에 Lock을 건다.
-		CThreadSync() : m_CriticalSection(nullptr) {
-			T::m_CriticalSectionForAllObject.Lock();
-		}
-
-		// 해당 오브젝트에만 Lock을 건다.
-		CThreadSync(CMultiThreadSync* const MultiThreadSyncPtr) : m_CriticalSection(&MultiThreadSyncPtr->m_CriticalSectionForOnlyThisObject) {
-			if (m_CriticalSection) {
-				m_CriticalSection->Lock();
-			}
+		CThreadSync() {
+			T::m_CriticalSection.Lock();
 		}
 
 		CThreadSync(CMultiThreadSync<T>::CThreadSync&) = delete;
 
 		virtual ~CThreadSync() {
-			if (m_CriticalSection) {
-				m_CriticalSection->UnLock();
-			}
-			else {
-				T::m_CriticalSectionForAllObject.UnLock();
-			}
+			T::m_CriticalSection.UnLock();
 		}
 	};
 };
 
 template<typename T>
-CCriticalSection CMultiThreadSync<T>::m_CriticalSectionForAllObject;
+CCriticalSection CMultiThreadSync<T>::m_CriticalSection;
