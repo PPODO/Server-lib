@@ -4,6 +4,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <string>
+#include "../Log/Log.h"
 
 class CSocketAddress {
 	friend class CTCPIPSocket;

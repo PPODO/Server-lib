@@ -8,9 +8,13 @@ private:
 
 public:
 	bool Initialize(const USHORT& Port);
+	bool Destroy();
 
 public:
 	bool InitializeReceiveFromForIOCP(CHAR* RecvData, struct OVERLAPPED_EX& RecvOverlapped);
-	bool ReceiveFromForEventSelect();
+	//bool ReceiveFromForEventSelect();
+
+public:
+	SOCKET GetSocket() const { return m_Socket; }
 
 };

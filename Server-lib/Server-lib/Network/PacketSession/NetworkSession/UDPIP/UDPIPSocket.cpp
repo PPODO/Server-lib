@@ -21,6 +21,15 @@ bool CUDPIPSocket::Initialize(const USHORT& Port) {
 	return true;
 }
 
+bool CUDPIPSocket::Destroy() {
+	if (m_Socket) {
+		shutdown(m_Socket, SD_BOTH);
+		closesocket(m_Socket);
+		m_Socket = INVALID_SOCKET;
+	}
+	return false;
+}
+
 bool CUDPIPSocket::InitializeReceiveFromForIOCP(CHAR * RecvData, OVERLAPPED_EX & RecvOverlapped) {
 	if (!RecvData) {
 		CLog::WriteLog(L"RecvFrom For IOCP : Recv Data Buffer is nullptr!");

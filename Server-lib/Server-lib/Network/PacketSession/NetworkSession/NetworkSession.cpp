@@ -5,7 +5,6 @@ CNetworkSession::CNetworkSession() : m_TCPSocket(new CTCPIPSocket), m_UDPSocket(
 }
 
 bool CNetworkSession::GetBufferData(CHAR * OutBuffer, const USHORT& Length) {
-	CThreadSync Sync;
 	if (!OutBuffer && Length <= 0) {
 		return false;
 	}

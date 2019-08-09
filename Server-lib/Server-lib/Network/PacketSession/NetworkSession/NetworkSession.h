@@ -4,7 +4,7 @@
 #include "TCPIP/TCPIPSocket.h"
 #include "UDPIP/UDPIPSocket.h"
 
-class CNetworkSession : CMultiThreadSync<CNetworkSession> {
+class CNetworkSession : public CMultiThreadSync<CNetworkSession> {
 private:
 	// Only use when IOCP
 	CHAR m_ReceiveBuffer[MAX_RECEIVE_BUFFER_LENGTH];
@@ -20,7 +20,7 @@ private:
 
 public:
 	CNetworkSession();
-	CNetworkSession(CNetworkSession& NetworkSession) = delete;
+	CNetworkSession(const CNetworkSession& NetworkSession) = delete;
 
 public:
 	// TCP
@@ -53,6 +53,18 @@ public:
 	}
 
 public:
+	// Both
+	inline bool Destroy() {
+		if (m_TCPSocket) {
+			m_TCPSocket->Destroy();
+		}
+		if (m_UDPSocket) {
+			m_UDPSocket->Destroy();
+		}
+		return true;
+	}
+
+public:
 	// Only use when IOCP
 	bool GetBufferData(CHAR* OutBuffer, const USHORT& Length);
 
@@ -60,6 +72,7 @@ public:
 	// TCP
 	inline bool InitializeReceiveForIOCP() {
 		CThreadSync Sync;
+
 		if (m_TCPSocket) {
 			return m_TCPSocket->InitializeReceiveForIOCP(m_ReceiveBuffer, m_RecvOverlapped);
 		}
@@ -67,6 +80,7 @@ public:
 	}
 	inline bool ReceiveForEventSelect(CHAR* OutBuffer, USHORT& ReceiveLength) {
 		CThreadSync Sync;
+
 		if (m_TCPSocket) {
 			return m_TCPSocket->ReceiveForEventSelect(OutBuffer, ReceiveLength, m_RecvOverlapped);
 		}
@@ -74,6 +88,7 @@ public:
 	}
 	inline bool Write(const CHAR* SendData, const USHORT& DataLength) {
 		CThreadSync Sync;
+
 		if (m_TCPSocket) {
 			return m_TCPSocket->Write(SendData, DataLength, m_SendOverlapped);
 		}
@@ -83,11 +98,15 @@ public:
 public:
 	// UDP
 	inline bool InitializeReceiveFromForIOCP() {
-		if (m_UDPSocket) {
-			m_UDPSocket->InitializeReceiveFromForIOCP(m_ReceiveBuffer, m_AcceptOverlapped);
-		}
+		CThreadSync Sync;
 
+		if (m_UDPSocket) {
+			return m_UDPSocket->InitializeReceiveFromForIOCP(m_ReceiveBuffer, m_AcceptOverlapped);
+		}
 		return false;
 	}
 
+public:
+	SOCKET GetTCPSocket() const { return m_TCPSocket ? m_TCPSocket->GetSocket() : INVALID_SOCKET; }
+	SOCKET GetUDPSocket() const { return m_UDPSocket ? m_UDPSocket->GetSocket() : INVALID_SOCKET; }
 };

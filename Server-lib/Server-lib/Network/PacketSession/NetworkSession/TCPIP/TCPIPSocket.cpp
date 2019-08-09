@@ -4,6 +4,9 @@
 #include <MSWSock.h>
 #pragma comment(lib, "mswsock.lib")
 
+CTCPIPSocket::CTCPIPSocket() : m_Socket(INVALID_SOCKET) {
+}
+
 bool CTCPIPSocket::Initialize() {
 	if (m_Socket != INVALID_SOCKET) {
 		CLog::WriteLog(L"Initialize TCP : TCP Socket is Already Initialized!");
@@ -13,6 +16,15 @@ bool CTCPIPSocket::Initialize() {
 	if ((m_Socket = CSocketUtil::CreateTCPSocket()) == INVALID_SOCKET) {
 		CLog::WriteLog(L"Initialize TCP : Create TCP Socket is Failure! - %d", WSAGetLastError());
 		return false;
+	}
+	return true;
+}
+
+bool CTCPIPSocket::Destroy() {
+	if (m_Socket) {
+		shutdown(m_Socket, SD_BOTH);
+		closesocket(m_Socket);
+		m_Socket = INVALID_SOCKET;
 	}
 	return true;
 }
@@ -55,7 +67,7 @@ bool CTCPIPSocket::Accept(const SOCKET& ListenSocket, OVERLAPPED_EX& AcceptOverl
 	return true;
 }
 
-inline bool CTCPIPSocket::InitializeReceiveForIOCP(CHAR* RecvData, OVERLAPPED_EX & RecvOverlapped) {
+bool CTCPIPSocket::InitializeReceiveForIOCP(CHAR* RecvData, OVERLAPPED_EX & RecvOverlapped) {
 	if (!RecvData) {
 		CLog::WriteLog(L"Recv For IOCP : Recv Data Buffer is nullptr!");
 		return false;
@@ -75,7 +87,7 @@ inline bool CTCPIPSocket::InitializeReceiveForIOCP(CHAR* RecvData, OVERLAPPED_EX
 	return true;
 }
 
-inline bool CTCPIPSocket::ReceiveForEventSelect(CHAR * RecvData, USHORT & DataLength, OVERLAPPED_EX & RecvOverlapped) {
+bool CTCPIPSocket::ReceiveForEventSelect(CHAR * RecvData, USHORT & DataLength, OVERLAPPED_EX & RecvOverlapped) {
 	if (!m_Socket) {
 		CLog::WriteLog(L"Recv For Event Select : Socket Is Failure!");
 		return false;
@@ -99,7 +111,7 @@ inline bool CTCPIPSocket::ReceiveForEventSelect(CHAR * RecvData, USHORT & DataLe
 	return true;
 }
 
-inline bool CTCPIPSocket::Write(const CHAR* SendData, const USHORT& DataLength, OVERLAPPED_EX& SendOverlapped) {
+bool CTCPIPSocket::Write(const CHAR* SendData, const USHORT& DataLength, OVERLAPPED_EX& SendOverlapped) {
 	if (!SendData || DataLength <= 0) {
 		CLog::WriteLog(L"Send Data : Send Data Buffer is nullptr or Data Length is Less Than Zero!");
 		return false;
