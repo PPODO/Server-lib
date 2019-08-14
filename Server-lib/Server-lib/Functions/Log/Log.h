@@ -1,7 +1,6 @@
 #pragma once
 #include <iostream>
 #include <fstream>
-#include <Windows.h>
 #include "../ThreadSync/ThreadSync.h"
 
 #define MAX_BUFFER_LENGTH 256

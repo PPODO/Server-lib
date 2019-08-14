@@ -14,7 +14,7 @@ private:
 	static void AllocBlock() {
 		m_FreePointer = new UCHAR[sizeof(T) * ALLOC_BLOCK_SIZE];
 		if (!m_FreePointer) {
-
+			return;
 		}
 
 		UCHAR** Current = reinterpret_cast<UCHAR**>(m_FreePointer);

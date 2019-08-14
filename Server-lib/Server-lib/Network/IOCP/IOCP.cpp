@@ -1,35 +1,28 @@
 #include "IOCP.h"
-#include "../../Functions/Log/Log.h"
+#include "../../Functions/SocketUtil/SocketUtil.h"
 
-CIOCP::CIOCP() : m_hIOCP(INVALID_HANDLE_VALUE) {
-	WSAStartup(WINSOCK_VERSION, &m_WinSockData);
-}
-
-CIOCP::~CIOCP() {
-	WSACleanup();
+CIOCP::CIOCP() : m_hIOCP(INVALID_HANDLE_VALUE), m_hWaitForInitalization(INVALID_HANDLE_VALUE) {
 }
 
 bool CIOCP::Initialize() {
-	if ((m_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, INVALID_HANDLE_VALUE, 0, 0)) == INVALID_HANDLE_VALUE) {
-		CLog::WriteLog(L"IOCP Initialize : Initialize IO Completion Port is Failure!");
+	if (WSAStartup(WINSOCK_VERSION, &m_WinSockData) == SOCKET_ERROR) {
+		CLog::WriteLog(L"Initialize IOCP : WSAStartup Failure!");
 		return false;
 	}
 
-	if ((m_hWaitInitializeThreadHandle = CreateEvent(nullptr, false, false, nullptr)) == INVALID_HANDLE_VALUE) {
-		CLog::WriteLog(L"IOCP Initialize : Create Wait Initialize Thread Handle is Failure!");
+	if ((m_hWaitForInitalization = CreateEvent(nullptr, false, false, nullptr)) == NULL) {
+		CLog::WriteLog(L"Initialize IOCP : ");
 		return false;
 	}
-	return CreateWorkerThreads();
-}
 
-bool CIOCP::CreateWorkerThreads() {
-	SYSTEM_INFO SystemInfo;
-	GetSystemInfo(&SystemInfo);
-
-	for (size_t i = 0; i < SystemInfo.dwNumberOfProcessors * 2; i++) {
-		m_WorkerThreads.push_back(std::thread(&CIOCP::WorkerThreadCallback, this));
+	if ((m_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 0)) == NULL) {
+		CLog::WriteLog(L"Initialize IOCP : Failed To Create Completion Port!");
+		return false;
 	}
-	CLog::WriteLog(L"Create Worker Thread is Successful!");
+	CreateWorkerThread();
+
+	WaitForSingleObject(m_hWaitForInitalization, INFINITE);
+	CLog::WriteLog(L"Initialize IOCP : Initialization Successful!");
 	return true;
 }
 
@@ -39,47 +32,69 @@ bool CIOCP::Destroy() {
 		Iterator.join();
 	}
 
-	if (m_hIOCP) {
+	if (m_hWaitForInitalization != INVALID_HANDLE_VALUE) {
+		CloseHandle(m_hWaitForInitalization);
+		m_hWaitForInitalization = INVALID_HANDLE_VALUE;
+	}
+
+	if (m_hIOCP != INVALID_HANDLE_VALUE) {
 		CloseHandle(m_hIOCP);
+		m_hIOCP = INVALID_HANDLE_VALUE;
 	}
-	if (m_hWaitInitializeThreadHandle) {
-		CloseHandle(m_hWaitInitializeThreadHandle);
-	}
+
+	WSACleanup();
 	return true;
 }
 
-void CIOCP::WorkerThreadCallback() {
-	DWORD RecvBytes = 0;
-	LPOVERLAPPED Overlapped = nullptr;
-	void* CompletionObject = nullptr;
-
-	WaitForSingleObject(m_hWaitInitializeThreadHandle, INFINITE);
-	while (true) {
-		bool Succeed = GetQueuedCompletionStatus(m_hIOCP, &RecvBytes, reinterpret_cast<PULONG_PTR>(&CompletionObject), &Overlapped, INFINITE);
-
-		if (!Succeed) {
-			std::cout << "Failre! - " << WSAGetLastError() << std::endl;
-			// Error
-		}
-		else if (Succeed && RecvBytes == 0) {
-			std::cout << "Disconnect!\n";
-			// disconnect
-		}
-		else if (Succeed) {
-			std::cout << "Process!\n";
-			// Process
-		}
+void CIOCP::CreateWorkerThread() {
+	SYSTEM_INFO SysInfo;
+	GetSystemInfo(&SysInfo);
+	
+	for (size_t i = 0; i < SysInfo.dwNumberOfProcessors * 2; i++) {
+		m_WorkerThreads.push_back(std::thread(&CIOCP::WorkerThreadProcess, this));
 	}
+	CLog::WriteLog(L"Create Worker Thread : Worker Thread Creation Successful! - %d", SysInfo.dwNumberOfProcessors * 2);
 }
 
-bool CIOCP::RegisterCompletionPort(const SOCKET& Socket, const ULONG_PTR& CompletionKey) {
-	if (Socket == INVALID_SOCKET) {
-		CLog::WriteLog(L"Register IO Completion Port : Socket is Invalid!");
-		return false;
-	}
-	if ((m_hIOCP = CreateIoCompletionPort(reinterpret_cast<HANDLE>(Socket), m_hIOCP, CompletionKey, 0)) == INVALID_HANDLE_VALUE) {
-		CLog::WriteLog(L"Register IO Completion Port : Create IO Completion Port is Failure!");
-		return false;
+bool CIOCP::WorkerThreadProcess() {
+	DWORD RecvBytes = 0;
+	LPOVERLAPPED Overlapped = nullptr;
+	void* CompletionPort = nullptr;
+
+	SetEvent(m_hWaitForInitalization);
+	while (true) {
+		bool Succeed = GetQueuedCompletionStatus(m_hIOCP, &RecvBytes, reinterpret_cast<PULONG_PTR>(&CompletionPort), &Overlapped, INFINITE);
+
+		if (!CompletionPort) {
+			return false;
+		}
+
+		if (OVERLAPPED_EX * OverlappedEX = reinterpret_cast<OVERLAPPED_EX*>(Overlapped)) {
+			if (!Succeed || (Succeed && RecvBytes == 0)) {
+				switch (OverlappedEX->m_IOType) {
+				case EIOTYPE::EIOTYPE_ACCEPT:
+					OnIOAccept();
+					break;
+				default:
+					OnIODisconnect();
+					break;
+				}
+				continue;
+			}
+
+			switch (OverlappedEX->m_IOType) {
+			case EIOTYPE::EIOTYPE_READ:
+				OnIORead();
+				break;
+			case EIOTYPE::EIOTYPE_WRITE:
+				OnIOWrite();
+				break;
+			case EIOTYPE::EIOTYPE_NONE:
+			default:
+				CLog::WriteLog(L"Unknown IO Type!");
+				break;
+			}
+		}
 	}
 	return true;
 }

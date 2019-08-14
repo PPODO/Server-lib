@@ -1,27 +1,29 @@
 #pragma once
-#include "../../../../Functions/SocketAddress/SocketAddress.h"
+#include "../../../../Functions/SocketUtil/SocketUtil.h"
 
 class CTCPIPSocket {
 private:
 	SOCKET m_Socket;
-	// 소켓 변수에 버퍼가 있어야 하나?
-	// NetworkSession에 넣어도 상관 없을 것 같다.
+
+private:
+	CHAR m_IOCPReceiveBuffer[MAX_RECEIVE_BUFFER_LENGTH];
 
 public:
 	CTCPIPSocket();
 
 public:
 	bool Initialize();
-	bool Destroy();
-	bool Listen(const CSocketAddress& BindAddress, const USHORT& MaxBackLogCount);
+	bool Listen(const CSocketAddress& BindAddress, const USHORT& BackLogCount);
+	bool Connect(const CSocketAddress& ConnectionAddress);
 	bool Accept(const SOCKET& ListenSocket, struct OVERLAPPED_EX& AcceptOverlapped);
+	bool Destroy();
 
 public:
-	bool InitializeReceiveForIOCP(CHAR* RecvData, struct OVERLAPPED_EX& RecvOverlapped);
-	bool ReceiveForEventSelect(CHAR* RecvData, USHORT& DataLength, struct OVERLAPPED_EX& RecvOverlapped);
-	bool Write(const CHAR* SendData, const USHORT& DataLength, struct OVERLAPPED_EX& SendOverlapped);
+	bool ReadForIOCP(struct OVERLAPPED_EX& RecvOverlapped);
+	bool CopyIOCPBuffer(CHAR* OutDataBuffer, const USHORT& DataLength);
+	bool Write(const CHAR* OutDataBuffer, const USHORT& DataLength, struct OVERLAPPED_EX& SendOverlapped);
 
 public:
-	SOCKET GetSocket() const { return m_Socket; }
+	inline SOCKET GetSocket() const { return m_Socket; }
 
 };

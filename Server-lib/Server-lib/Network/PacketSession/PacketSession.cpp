@@ -1,29 +1,33 @@
 #include "PacketSession.h"
-#include "../../Functions/Log/Log.h"
 
-CPacketSession::CPacketSession() : m_CurrentBufferBytes(0) {
-	ZeroMemory(m_PacketBuffer, MAX_RECEIVE_BUFFER_LENGTH);
+CPacketSession::CPacketSession() : m_CurrentReadBytes(0), m_PacketSize(0) {
 }
 
-bool CPacketSession::CopyBufferDataForIOCP(const USHORT & ReceivedBytes) {
+bool CPacketSession::Initialize() {
 	CThreadSync Sync;
-
-	if (!CNetworkSession::GetBufferData(m_PacketBuffer + m_CurrentBufferBytes, ReceivedBytes)) {
-		CLog::WriteLog(L"Buffer Data Copy Failure!");
+	if (CNetworkSession::Initialize()) {
 		return false;
 	}
-	m_CurrentBufferBytes += ReceivedBytes;
+
+	ZeroMemory(m_PacketBuffer, MAX_RECEIVE_BUFFER_LENGTH);
 	return true;
 }
 
-bool CPacketSession::CopyBufferDataForEventSelect() {
+bool CPacketSession::Destroy() {
 	CThreadSync Sync;
 
-	USHORT ReceivedBytes = 0;
-	if (!CNetworkSession::ReceiveForEventSelect(m_PacketBuffer + m_CurrentBufferBytes, ReceivedBytes)) {
-		CLog::WriteLog(L"Buffer Data Copy Failure!");
-		return false;
+	return CNetworkSession::Destroy();
+}
+
+bool CPacketSession::PacketAnalysis() {
+	CThreadSync Sync;
+
+	if (m_PacketSize <= 0) {
+		m_PacketSize = GetPacketSize();
 	}
-	m_CurrentBufferBytes += ReceivedBytes;
+	else if(m_CurrentReadBytes >= m_PacketSize) {
+		// deserialize
+
+	}
 	return true;
 }

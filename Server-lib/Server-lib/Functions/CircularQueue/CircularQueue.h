@@ -1,5 +1,6 @@
 #pragma once
 #include "../ThreadSync/ThreadSync.h"
+#include "../SocketUtil/SocketUtil.h"
 
 struct QUEUE_DATA {
 public:
@@ -9,7 +10,15 @@ public:
 
 public:
 	QUEUE_DATA() : m_Owner(nullptr), m_DataSize(0) { ZeroMemory(m_DataBuffer, MAX_RECEIVE_BUFFER_LENGTH); };
-	QUEUE_DATA(const void* Owner, const char* DataBuffer, const USHORT& DataSize) : m_Owner(m_Owner), m_DataSize(DataSize) { CopyMemory(m_DataBuffer, DataBuffer, DataSize); }
+	QUEUE_DATA(const void* Owner, const char* DataBuffer, const USHORT& DataSize) : m_Owner(const_cast<void*>(Owner)), m_DataSize(DataSize) {
+		if (m_DataBuffer) {
+			delete[] m_DataBuffer;
+		}
+
+		if (DataSize > 0) {
+			CopyMemory(m_DataBuffer, DataBuffer, DataSize);
+		}
+	}
 
 };
 
