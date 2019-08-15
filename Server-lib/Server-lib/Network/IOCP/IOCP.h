@@ -1,6 +1,7 @@
 #pragma once
 #include "../../Functions/Log/Log.h"
 #include "../../Functions/SocketAddress/SocketAddress.h"
+#include "../../Functions/Queue/Queue.h"
 #include <vector>
 #include <thread>
 
@@ -19,10 +20,14 @@ private:
 	bool WorkerThreadProcess();
 
 protected:
+	 CQueue m_PacketProcessingQueue;
+
+protected:
 	virtual bool OnIOAccept(void* Object) = 0;
 	virtual bool OnIODisconnect(void* Object) = 0;
 	virtual bool OnIORead(void* Object, const USHORT& RecvBytes) = 0;
 	virtual bool OnIOWrite(void* Object) = 0;
+	virtual bool PacketProcessing() = 0;
 
 protected:
 	void CreateWorkerThread();

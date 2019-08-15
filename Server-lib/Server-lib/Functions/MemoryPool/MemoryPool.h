@@ -1,6 +1,4 @@
 #pragma once
-#include <cstdlib>
-#include <Windows.h>
 #include "../ThreadSync/ThreadSync.h"
 
 template<typename T, size_t ALLOC_BLOCK_SIZE = 50>
@@ -35,7 +33,7 @@ private:
 
 public:
 	static void* operator new(std::size_t AllocLength) {
-		CThreadSync Sync(this);
+		class CMultiThreadSync<T>::CThreadSync Sync;
 
 		if (!m_FreePointer) {
 			AllocBlock();
@@ -50,7 +48,7 @@ public:
 	}
 
 	static void operator delete(void* DeletePointer) {
-		CThreadSync Sync(this);
+		class CMultiThreadSync<T>::CThreadSync Sync;
 
 		// AllocBlock 함수의 *Current = Next와 같은 역할, 현재 delete된 메모리에 다음 메모리의 위치를 기록함으로써, 재활용이 가능하도록 함.
 		*reinterpret_cast<UCHAR**>(DeletePointer) = m_FreePointer;

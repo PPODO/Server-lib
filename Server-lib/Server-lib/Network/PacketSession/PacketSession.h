@@ -1,5 +1,6 @@
 #pragma once
 #include "NetworkSession/NetworkSession.h"
+#include "../../Functions/BasePacket/BasePacket.h"
 
 class CPacketSession : public CNetworkSession {
 private:
@@ -7,12 +8,10 @@ private:
 	size_t m_CurrentReadBytes;
 
 private:
-	size_t m_PacketSize;
+	USHORT m_PacketSize;
 
-private:
-	inline size_t GetPacketSize() {
-		return reinterpret_cast<uint8_t>(m_PacketBuffer);
-	}
+protected:
+	virtual CBasePacket* FindPacketType(const CHAR* Buffer, const size_t& PacketSize) = 0;
 
 public:
 	CPacketSession();
@@ -33,6 +32,6 @@ public:
 	}
 
 public:
-	bool PacketAnalysis();
+	CBasePacket* PacketAnalysis();
 
 };

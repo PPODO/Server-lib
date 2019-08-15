@@ -1,6 +1,5 @@
 #pragma once
 #include "../CriticalSection/CriticalSection.h"
-#include <iostream>
 
 template<typename T>
 class CMultiThreadSync {

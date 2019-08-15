@@ -27,6 +27,15 @@ bool CIOCP::Initialize() {
 }
 
 bool CIOCP::Destroy() {
+	while (!m_PacketProcessingQueue.IsEmpty()) {
+		PACKET_QUEUE_DATA Data;
+		if (m_PacketProcessingQueue.Pop(Data)) {
+			if (Data.m_Packet) {
+				delete Data.m_Packet;
+			}
+		}
+	}
+
 	for (auto& Iterator : m_WorkerThreads) {
 		PostQueuedCompletionStatus(m_hIOCP, 0, 0, nullptr);
 		Iterator.join();

@@ -19,15 +19,23 @@ bool CPacketSession::Destroy() {
 	return CNetworkSession::Destroy();
 }
 
-bool CPacketSession::PacketAnalysis() {
+CBasePacket* CPacketSession::PacketAnalysis() {
 	CThreadSync Sync;
 
-	if (m_PacketSize <= 0) {
-		m_PacketSize = GetPacketSize();
+	if (m_PacketSize <= 0 && m_CurrentReadBytes >= sizeof(USHORT)) {
+		m_PacketSize = *reinterpret_cast<USHORT*>(m_PacketBuffer);
+		if (m_PacketSize <= 0) {
+			m_PacketSize = 0;
+			CLog::WriteLog(L"Packet Analysis : Wrong Packet!");
+			return nullptr;
+		}
+		m_CurrentReadBytes -= sizeof(USHORT);
 	}
-	else if(m_CurrentReadBytes >= m_PacketSize) {
-		// deserialize
+	if(m_CurrentReadBytes >= m_PacketSize) {
+		CBasePacket* NewPacket = FindPacketType(m_PacketBuffer, m_PacketSize);
+		MoveMemory(m_PacketBuffer, m_PacketBuffer + m_PacketSize, m_CurrentReadBytes - m_PacketSize);
 
+		return NewPacket;
 	}
-	return true;
+	return nullptr;
 }

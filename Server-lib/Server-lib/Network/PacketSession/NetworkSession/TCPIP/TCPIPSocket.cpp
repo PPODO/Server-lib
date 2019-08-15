@@ -138,6 +138,18 @@ bool CTCPIPSocket::Write(const CHAR * OutDataBuffer, const USHORT & DataLength, 
 	}
 
 	DWORD SendBytes = 0;
+
+	WSABUF SendBufferBytes;
+	SendBufferBytes.buf = const_cast<CHAR*>(reinterpret_cast<const CHAR*>(&DataLength));
+	SendBufferBytes.len = sizeof(DataLength);
+
+	if (WSASend(m_Socket, &SendBufferBytes, 1, &SendBytes, 1, nullptr, nullptr) == SOCKET_ERROR) {
+		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
+			CLog::WriteLog(L"Write : Send Bytes Failure! - %d", WSAGetLastError());
+			return false;
+		}
+	}
+
 	WSABUF SendBuffer;
 	SendBuffer.buf = const_cast<CHAR*>(OutDataBuffer);
 	SendBuffer.len = DataLength;
