@@ -15,7 +15,7 @@ protected:
 	inline bool CopyIOCPBuffer(CHAR* OutDataBuffer, const USHORT& DataLength) {
 		CThreadSync Sync;
 
-		m_TCPSocket.CopyIOCPBuffer(OutDataBuffer, DataLength);
+		return m_TCPSocket.CopyIOCPBuffer(OutDataBuffer, DataLength);
 	}
 
 public:
@@ -31,13 +31,13 @@ public:
 	inline bool ReadForIOCP() {
 		CThreadSync Sync;
 
-		m_TCPSocket.ReadForIOCP(m_RecvOverlapped);
+		return m_TCPSocket.ReadForIOCP(m_RecvOverlapped);
 	}
 
 	inline bool Write(const CHAR* OutDataBuffer, const USHORT& DataLength) {
 		CThreadSync Sync;
 		 
-		m_TCPSocket.Write(OutDataBuffer, DataLength, m_SendOverlapped);
+		return m_TCPSocket.Write(OutDataBuffer, DataLength, m_SendOverlapped);
 	}
 
 public:

@@ -1,5 +1,7 @@
 #include "TCPIPSocket.h"
 #include "../../../../Functions/Log/Log.h"
+#include <MSWSock.h>
+#pragma comment(lib, "mswsock.lib")
 
 CTCPIPSocket::CTCPIPSocket() : m_Socket(INVALID_SOCKET) {
 	ZeroMemory(m_IOCPReceiveBuffer, MAX_RECEIVE_BUFFER_LENGTH);
@@ -51,7 +53,7 @@ bool CTCPIPSocket::Connect(const CSocketAddress& ConnectionAddress) {
 }
 
 bool CTCPIPSocket::Accept(const SOCKET& ListenSocket, OVERLAPPED_EX& AcceptOverlapped) {
-/*	if (ListenSocket == INVALID_SOCKET) {
+	if (ListenSocket == INVALID_SOCKET) {
 		CLog::WriteLog(L"Accept Client : Invalid Listen Socket!");
 		return false;
 	}
@@ -81,7 +83,7 @@ bool CTCPIPSocket::Accept(const SOCKET& ListenSocket, OVERLAPPED_EX& AcceptOverl
 			CLog::WriteLog(L"Accept Client : Accept Failure! - %d", WSAGetLastError());
 			return false;
 		}
-	}*/
+	}
 	return true;
 }
 

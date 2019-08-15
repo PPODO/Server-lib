@@ -62,6 +62,7 @@ bool CIOCP::WorkerThreadProcess() {
 	void* CompletionPort = nullptr;
 
 	SetEvent(m_hWaitForInitalization);
+
 	while (true) {
 		bool Succeed = GetQueuedCompletionStatus(m_hIOCP, &RecvBytes, reinterpret_cast<PULONG_PTR>(&CompletionPort), &Overlapped, INFINITE);
 
@@ -69,14 +70,20 @@ bool CIOCP::WorkerThreadProcess() {
 			return false;
 		}
 
-		if (OVERLAPPED_EX * OverlappedEX = reinterpret_cast<OVERLAPPED_EX*>(Overlapped)) {
+		if (OVERLAPPED_EX* OverlappedEX = reinterpret_cast<OVERLAPPED_EX*>(Overlapped)) {
 			if (!Succeed || (Succeed && RecvBytes == 0)) {
 				switch (OverlappedEX->m_IOType) {
 				case EIOTYPE::EIOTYPE_ACCEPT:
-					OnIOAccept();
+					if (!OnIOAccept(OverlappedEX->m_Owner)) {
+						OnIODisconnect(OverlappedEX->m_Owner);
+					}
+					break;
+				case EIOTYPE::EIOTYPE_NONE:
+					CLog::WriteLog(L"Unknown IO Type!");
 					break;
 				default:
-					OnIODisconnect();
+					CLog::WriteLog(L"Disconnect!");
+					OnIODisconnect(OverlappedEX->m_Owner);
 					break;
 				}
 				continue;
@@ -84,12 +91,11 @@ bool CIOCP::WorkerThreadProcess() {
 
 			switch (OverlappedEX->m_IOType) {
 			case EIOTYPE::EIOTYPE_READ:
-				OnIORead();
+				OnIORead(OverlappedEX->m_Owner, RecvBytes);
 				break;
 			case EIOTYPE::EIOTYPE_WRITE:
-				OnIOWrite();
+				OnIOWrite(OverlappedEX->m_Owner);
 				break;
-			case EIOTYPE::EIOTYPE_NONE:
 			default:
 				CLog::WriteLog(L"Unknown IO Type!");
 				break;

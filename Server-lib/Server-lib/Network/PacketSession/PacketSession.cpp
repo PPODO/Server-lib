@@ -5,7 +5,7 @@ CPacketSession::CPacketSession() : m_CurrentReadBytes(0), m_PacketSize(0) {
 
 bool CPacketSession::Initialize() {
 	CThreadSync Sync;
-	if (CNetworkSession::Initialize()) {
+	if (!CNetworkSession::Initialize()) {
 		return false;
 	}
 

@@ -11,6 +11,8 @@ bool CNetworkSession::Initialize() {
 	m_RecvOverlapped.m_IOType = EIOTYPE::EIOTYPE_READ;
 	m_SendOverlapped.m_IOType = EIOTYPE::EIOTYPE_WRITE;
 
+	m_AcceptOverlapped.m_Owner = m_RecvOverlapped.m_Owner = m_SendOverlapped.m_Owner = this;
+
 	return m_TCPSocket.Initialize();
 }
 

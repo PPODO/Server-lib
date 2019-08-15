@@ -19,10 +19,10 @@ private:
 	bool WorkerThreadProcess();
 
 protected:
-	virtual bool OnIOAccept() = 0;
-	virtual bool OnIODisconnect() = 0;
-	virtual bool OnIORead() = 0;
-	virtual bool OnIOWrite() = 0;
+	virtual bool OnIOAccept(void* Object) = 0;
+	virtual bool OnIODisconnect(void* Object) = 0;
+	virtual bool OnIORead(void* Object, const USHORT& RecvBytes) = 0;
+	virtual bool OnIOWrite(void* Object) = 0;
 
 protected:
 	void CreateWorkerThread();
@@ -34,7 +34,7 @@ protected:
 			return false;
 		}
 
-		if ((m_hIOCP = CreateIoCompletionPort(reinterpret_cast<HANDLE>(Socket), m_hIOCP, CompletionPort, 0))) {
+		if ((m_hIOCP = CreateIoCompletionPort(reinterpret_cast<HANDLE>(Socket), m_hIOCP, CompletionPort, 0)) == NULL) {
 			CLog::WriteLog(L"Register IO Completion Port : Failed To Register Completion Port!");
 			return false;
 		}
