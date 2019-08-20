@@ -18,6 +18,12 @@ protected:
 		return m_TCPSocket.CopyIOCPBuffer(OutDataBuffer, DataLength);
 	}
 
+	inline bool Write(const struct PACKET_INFORMATION& PacketInfo, const CHAR* OutDataBuffer, const USHORT& DataLength) {
+		CThreadSync Sync;
+
+		return m_TCPSocket.Write(PacketInfo, OutDataBuffer, DataLength, m_SendOverlapped);
+	}
+
 public:
 	virtual bool Initialize();
 	virtual bool Destroy();
@@ -32,12 +38,6 @@ public:
 		CThreadSync Sync;
 
 		return m_TCPSocket.ReadForIOCP(m_RecvOverlapped);
-	}
-
-	inline bool Write(const CHAR* OutDataBuffer, const USHORT& DataLength) {
-		CThreadSync Sync;
-		 
-		return m_TCPSocket.Write(OutDataBuffer, DataLength, m_SendOverlapped);
 	}
 
 public:

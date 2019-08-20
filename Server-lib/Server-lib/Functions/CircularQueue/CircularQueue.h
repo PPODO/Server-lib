@@ -14,11 +14,8 @@ public:
 public:
 	QUEUE_DATA() : m_Owner(nullptr), m_DataSize(0) { ZeroMemory(&m_DataBuffer, MAX_RECEIVE_BUFFER_LENGTH); }
 	QUEUE_DATA(const void* Owner, const char* DataBuffer, const USHORT& DataSize) : m_Owner(const_cast<void*>(Owner)), m_DataSize(DataSize) {
-		if (m_DataBuffer) {
-			delete[] m_DataBuffer;
-		}
-
 		if (DataSize > 0) {
+			ZeroMemory(&m_DataBuffer, MAX_RECEIVE_BUFFER_LENGTH);
 			CopyMemory(m_DataBuffer, DataBuffer, DataSize);
 		}
 	}

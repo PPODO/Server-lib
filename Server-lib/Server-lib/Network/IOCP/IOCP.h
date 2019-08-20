@@ -2,10 +2,11 @@
 #include "../../Functions/Log/Log.h"
 #include "../../Functions/SocketAddress/SocketAddress.h"
 #include "../../Functions/Queue/Queue.h"
+#include "../../Functions/ThreadSync/ThreadSync.h"
 #include <vector>
 #include <thread>
 
-class CIOCP {
+class CIOCP : public CMultiThreadSync<CIOCP> {
 private:
 	WSADATA m_WinSockData;
 
@@ -34,7 +35,7 @@ protected:
 
 protected:
 	inline bool RegisterIOCompletionPort(const SOCKET& Socket, const ULONG_PTR& CompletionPort) {
-		if (Socket == INVALID_SOCKET || m_hIOCP == INVALID_HANDLE_VALUE) {
+		if (Socket == INVALID_SOCKET || m_hIOCP == NULL) {
 			CLog::WriteLog(L"Register IO Completion Port : Invalid Socket or Invalid Handle Value!");
 			return false;
 		}

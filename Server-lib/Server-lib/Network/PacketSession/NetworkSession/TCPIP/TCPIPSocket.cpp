@@ -1,5 +1,6 @@
 #include "TCPIPSocket.h"
 #include "../../../../Functions/Log/Log.h"
+#include "../../../../Functions/BasePacket/BasePacket.h"
 #include <MSWSock.h>
 #pragma comment(lib, "mswsock.lib")
 
@@ -77,8 +78,8 @@ bool CTCPIPSocket::Accept(const SOCKET& ListenSocket, OVERLAPPED_EX& AcceptOverl
 		}
 	}
 
-	CHAR Temp;
-	if (!AcceptEx(ListenSocket, m_Socket, &Temp, 0, CSocketAddress::GetSize() + 16, CSocketAddress::GetSize() + 16, nullptr, &AcceptOverlapped.m_Overlapped)) {
+	CHAR Temp[MAX_RECEIVE_BUFFER_LENGTH];
+	if (!AcceptEx(ListenSocket, m_Socket, Temp, 0, CSocketAddress::GetSize() + 16, CSocketAddress::GetSize() + 16, nullptr, &AcceptOverlapped.m_Overlapped)) {
 		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
 			CLog::WriteLog(L"Accept Client : Accept Failure! - %d", WSAGetLastError());
 			return false;
@@ -126,7 +127,7 @@ bool CTCPIPSocket::CopyIOCPBuffer(CHAR * OutDataBuffer, const USHORT & DataLengt
 	return true;
 }
 
-bool CTCPIPSocket::Write(const CHAR * OutDataBuffer, const USHORT & DataLength, OVERLAPPED_EX & SendOverlapped) {
+bool CTCPIPSocket::Write(const PACKET_INFORMATION& PacketInfo, const CHAR * OutDataBuffer, const USHORT & DataLength, OVERLAPPED_EX & SendOverlapped) {
 	if (m_Socket == INVALID_SOCKET) {
 		CLog::WriteLog(L"Write : Invalid Socket!");
 		return false;
@@ -140,8 +141,8 @@ bool CTCPIPSocket::Write(const CHAR * OutDataBuffer, const USHORT & DataLength, 
 	DWORD SendBytes = 0;
 
 	WSABUF SendBufferBytes;
-	SendBufferBytes.buf = const_cast<CHAR*>(reinterpret_cast<const CHAR*>(&DataLength));
-	SendBufferBytes.len = sizeof(DataLength);
+	SendBufferBytes.buf = const_cast<CHAR*>(reinterpret_cast<const CHAR*>(&PacketInfo)); 
+	SendBufferBytes.len = sizeof(PacketInfo);
 
 	if (WSASend(m_Socket, &SendBufferBytes, 1, &SendBytes, 1, nullptr, nullptr) == SOCKET_ERROR) {
 		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {

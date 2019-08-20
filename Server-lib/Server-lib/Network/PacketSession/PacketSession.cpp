@@ -1,6 +1,6 @@
 #include "PacketSession.h"
 
-CPacketSession::CPacketSession() : m_CurrentReadBytes(0), m_PacketSize(0) {
+CPacketSession::CPacketSession() : m_CurrentReadBytes(0), m_PacketInformation(0, 0) {
 }
 
 bool CPacketSession::Initialize() {
@@ -22,18 +22,27 @@ bool CPacketSession::Destroy() {
 CBasePacket* CPacketSession::PacketAnalysis() {
 	CThreadSync Sync;
 
-	if (m_PacketSize <= 0 && m_CurrentReadBytes >= sizeof(USHORT)) {
-		m_PacketSize = *reinterpret_cast<USHORT*>(m_PacketBuffer);
-		if (m_PacketSize <= 0) {
-			m_PacketSize = 0;
+	if (m_CurrentReadBytes <= 0) {
+		return nullptr;
+	}
+
+	if (m_PacketInformation.m_PacketSize <= 0 && m_CurrentReadBytes >= PACKET_INFORMATION::GetSize()) {
+		m_PacketInformation = *reinterpret_cast<PACKET_INFORMATION*>(m_PacketBuffer);
+		if (m_PacketInformation.m_PacketSize <= 0) {
+			ZeroMemory(&m_PacketInformation, PACKET_INFORMATION::GetSize());
 			CLog::WriteLog(L"Packet Analysis : Wrong Packet!");
 			return nullptr;
 		}
-		m_CurrentReadBytes -= sizeof(USHORT);
+
+		MoveBufferMemory(PACKET_INFORMATION::GetSize());
+		m_CurrentReadBytes -= PACKET_INFORMATION::GetSize();
 	}
-	if(m_CurrentReadBytes >= m_PacketSize) {
-		CBasePacket* NewPacket = FindPacketType(m_PacketBuffer, m_PacketSize);
-		MoveMemory(m_PacketBuffer, m_PacketBuffer + m_PacketSize, m_CurrentReadBytes - m_PacketSize);
+	if (m_CurrentReadBytes >= m_PacketInformation.m_PacketSize) {
+		CBasePacket* NewPacket = GetPacket(m_PacketInformation.m_PacketType, m_PacketBuffer, m_PacketInformation.m_PacketSize);
+
+		m_CurrentReadBytes -= m_PacketInformation.m_PacketSize;
+		MoveBufferMemory(m_PacketInformation.m_PacketSize);
+		ZeroMemory(&m_PacketInformation, PACKET_INFORMATION::GetSize());
 
 		return NewPacket;
 	}

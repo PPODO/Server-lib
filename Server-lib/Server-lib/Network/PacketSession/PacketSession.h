@@ -1,6 +1,8 @@
 #pragma once
+#include <string>
 #include "NetworkSession/NetworkSession.h"
 #include "../../Functions/BasePacket/BasePacket.h"
+#include "../../Functions/CircularQueue/CircularQueue.h"
 
 class CPacketSession : public CNetworkSession {
 private:
@@ -8,10 +10,18 @@ private:
 	size_t m_CurrentReadBytes;
 
 private:
-	USHORT m_PacketSize;
+	PACKET_INFORMATION m_PacketInformation;
+
+private:
+	CCircularQueue m_WriteQueue;
+
+private:
+	inline void MoveBufferMemory(const uint16_t& MoveLength) {
+		MoveMemory(m_PacketBuffer, m_PacketBuffer + MoveLength, m_CurrentReadBytes);
+	}
 
 protected:
-	virtual CBasePacket* FindPacketType(const CHAR* Buffer, const size_t& PacketSize) = 0;
+	virtual CBasePacket* GetPacket(const uint8_t& PacketType, const CHAR* Buffer, const USHORT& PacketSize) = 0;
 
 public:
 	CPacketSession();
@@ -19,6 +29,27 @@ public:
 public:
 	virtual bool Initialize() override;
 	virtual bool Destroy() override;
+
+public:
+	template<typename T>
+	bool Write(const T& Packet) {
+		CThreadSync Sync;
+
+		if (std::is_arithmetic<T>() || std::is_enum<T>()) {
+			CLog::WriteLog(L"Write : Only Types Support That Inherit BasePacket!");
+			return;
+		}
+
+		std::string Buffer;
+		Serialize(Packet, Buffer);
+
+		PACKET_INFORMATION PacketInformation(Buffer.length(), Packet.m_PacketType);
+
+		if (const CHAR* const TempBuffer = m_WriteQueue.Push(QUEUE_DATA(this, Buffer.c_str(), Buffer.length()))) {
+			return CNetworkSession::Write(PacketInformation, TempBuffer, Buffer.length());
+		}
+		return false;
+	}
 
 public:
 	inline bool CopyIOCPBuffer(const USHORT& DataLength) {
@@ -29,6 +60,14 @@ public:
 		}
 		m_CurrentReadBytes += DataLength;
 		return true;
+	}
+	inline bool WriteComplete() {
+		CThreadSync Sync;
+
+		if (!m_WriteQueue.IsEmpty()) {
+			return m_WriteQueue.Pop();
+		}
+		return false;
 	}
 
 public:

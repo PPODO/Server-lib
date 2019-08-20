@@ -6,11 +6,11 @@
 struct PACKET_QUEUE_DATA {
 public:
 	void* m_Owner;
-	CBasePacket* m_Packet;
+	void* m_Packet;
 	
 public:
 	PACKET_QUEUE_DATA() : m_Owner(nullptr), m_Packet(nullptr) {}
-	PACKET_QUEUE_DATA(const void* Owner, const CBasePacket* Packet) : m_Owner(const_cast<void*>(Owner)), m_Packet(const_cast<CBasePacket*>(Packet)) {}
+	PACKET_QUEUE_DATA(const void* Owner, const void* Packet) : m_Owner(const_cast<void*>(Owner)), m_Packet(const_cast<void*>(Packet)) {}
 
 };
 
@@ -49,6 +49,10 @@ public:
 			return true;
 		}
 		return false;
+	}
+
+	int Count() {
+		return m_CurrentIndex;
 	}
 
 };

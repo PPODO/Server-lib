@@ -21,7 +21,7 @@ public:
 public:
 	bool ReadForIOCP(struct OVERLAPPED_EX& RecvOverlapped);
 	bool CopyIOCPBuffer(CHAR* OutDataBuffer, const USHORT& DataLength);
-	bool Write(const CHAR* OutDataBuffer, const USHORT& DataLength, struct OVERLAPPED_EX& SendOverlapped);
+	bool Write(const struct PACKET_INFORMATION& PacketInfo, const CHAR* OutDataBuffer, const USHORT& DataLength, struct OVERLAPPED_EX& SendOverlapped);
 
 public:
 	inline SOCKET GetSocket() const { return m_Socket; }
