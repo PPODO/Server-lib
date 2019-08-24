@@ -7,8 +7,6 @@
 #include "../Log/Log.h"
 
 class CSocketAddress {
-	friend class CTCPIPSocket;
-	friend class CUDPIPSocket;
 private:
 	sockaddr m_Address;
 

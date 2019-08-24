@@ -1,50 +1,50 @@
 #include "PacketSession.h"
+#include "../../Functions/SocketUtil/SocketUtil.h"
 
-CPacketSession::CPacketSession() : m_CurrentReadBytes(0), m_PacketInformation(0, 0) {
+CPacketSession::CPacketSession() : m_CurrentReceiveBytes(0) {
+	ZeroMemory(m_PacketBuffer, MAX_RECEIVE_BUFFER_LENGTH);
+	ZeroMemory(&m_PacketInformation, sizeof(PACKET_INFORMATION));
 }
 
 bool CPacketSession::Initialize() {
-	CThreadSync Sync;
 	if (!CNetworkSession::Initialize()) {
 		return false;
 	}
 
-	ZeroMemory(m_PacketBuffer, MAX_RECEIVE_BUFFER_LENGTH);
 	return true;
 }
 
 bool CPacketSession::Destroy() {
-	CThreadSync Sync;
-
 	return CNetworkSession::Destroy();
 }
 
-CBasePacket* CPacketSession::PacketAnalysis() {
-	CThreadSync Sync;
+PACKET::DETAIL::CBasePacket* CPacketSession::PacketAnalysis() {
 
-	if (m_CurrentReadBytes <= 0) {
-		return nullptr;
-	}
+	while (m_CurrentReceiveBytes > 0) {
+		if (m_PacketInformation.m_PacketSize == 0 && m_CurrentReceiveBytes >= PACKET_INFORMATION::GetSize()) {
+			if (PACKET_INFORMATION* Info = reinterpret_cast<PACKET_INFORMATION*>(m_PacketBuffer)) {
+				if (Info->m_PacketSize <= 0) { return nullptr; }
 
-	if (m_PacketInformation.m_PacketSize <= 0 && m_CurrentReadBytes >= PACKET_INFORMATION::GetSize()) {
-		m_PacketInformation = *reinterpret_cast<PACKET_INFORMATION*>(m_PacketBuffer);
-		if (m_PacketInformation.m_PacketSize <= 0) {
-			ZeroMemory(&m_PacketInformation, PACKET_INFORMATION::GetSize());
-			CLog::WriteLog(L"Packet Analysis : Wrong Packet!");
-			return nullptr;
+				m_PacketInformation = *Info;
+				MoveMemory(m_PacketBuffer, m_PacketBuffer + PACKET_INFORMATION::GetSize(), m_CurrentReceiveBytes);
+				m_CurrentReceiveBytes -= PACKET_INFORMATION::GetSize();
+			}
+			else {
+				return nullptr;
+			}
 		}
 
-		MoveBufferMemory(PACKET_INFORMATION::GetSize());
-		m_CurrentReadBytes -= PACKET_INFORMATION::GetSize();
-	}
-	if (m_CurrentReadBytes >= m_PacketInformation.m_PacketSize) {
-		CBasePacket* NewPacket = GetPacket(m_PacketInformation.m_PacketType, m_PacketBuffer, m_PacketInformation.m_PacketSize);
+		if (m_CurrentReceiveBytes >= m_PacketInformation.m_PacketSize) {
+			std::cout << m_CurrentReceiveBytes << std::endl;
+			PACKET::DETAIL::CBasePacket* NewPacket = GetPacketObjectByInformation(m_PacketInformation, m_PacketBuffer);
 
-		m_CurrentReadBytes -= m_PacketInformation.m_PacketSize;
-		MoveBufferMemory(m_PacketInformation.m_PacketSize);
-		ZeroMemory(&m_PacketInformation, PACKET_INFORMATION::GetSize());
+			MoveMemory(m_PacketBuffer, m_PacketBuffer + m_PacketInformation.m_PacketSize, m_CurrentReceiveBytes - m_PacketInformation.m_PacketSize);
+			m_CurrentReceiveBytes -= m_PacketInformation.m_PacketSize;
+			ZeroMemory(&m_PacketInformation, sizeof(PACKET_INFORMATION));
 
-		return NewPacket;
+			return NewPacket;
+		}
+
 	}
 	return nullptr;
 }

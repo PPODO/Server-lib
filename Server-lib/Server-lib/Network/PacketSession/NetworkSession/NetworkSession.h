@@ -1,46 +1,47 @@
 #pragma once
-#include "../../../Functions/ThreadSync/ThreadSync.h"
-#include "TCPIP/TCPIPSocket.h"
+#include "NetworkProtocol/NetworkProtocol.h"
+#include "../../../Functions/SocketUtil/SocketUtil.h"
 
-class CNetworkSession : public CMultiThreadSync<CNetworkSession> {
-public:
-	CTCPIPSocket m_TCPSocket;
+using namespace PROTOCOL;
 
+enum class EINITFLAG : uint8_t {
+	EIF_NONE,
+	EIF_TCP,
+	EIT_UDP,
+	EIT_BOTH
+};
+
+class CNetworkSession {
 private:
 	OVERLAPPED_EX m_AcceptOverlapped;
-	OVERLAPPED_EX m_RecvOverlapped;
 	OVERLAPPED_EX m_SendOverlapped;
+	OVERLAPPED_EX m_RecvOverlapped;
 
-protected:
-	inline bool CopyIOCPBuffer(CHAR* OutDataBuffer, const USHORT& DataLength) {
-		CThreadSync Sync;
+private:
+	TCPIP::CTCPIPSocket* m_TCPIPSocket;
+	UDPIP::CUDPIPSocket* m_UDPIPSocket;
 
-		return m_TCPSocket.CopyIOCPBuffer(OutDataBuffer, DataLength);
-	}
-
-	inline bool Write(const struct PACKET_INFORMATION& PacketInfo, const CHAR* OutDataBuffer, const USHORT& DataLength) {
-		CThreadSync Sync;
-
-		return m_TCPSocket.Write(PacketInfo, OutDataBuffer, DataLength, m_SendOverlapped);
-	}
+public:
+	CNetworkSession();
 
 public:
 	virtual bool Initialize();
 	virtual bool Destroy();
 
 public:
-	inline bool Listen(const CSocketAddress& BindAddress, const USHORT& BackLogCount = SOMAXCONN) { return m_TCPSocket.Listen(BindAddress, BackLogCount); }
-	inline bool Connect(const CSocketAddress& ConnectionAddress) { return m_TCPSocket.Connect(ConnectionAddress); }
-	inline bool Accept(const SOCKET& ListenSocket) { return m_TCPSocket.Accept(ListenSocket, m_AcceptOverlapped); }
-
-public:
-	inline bool ReadForIOCP() {
-		CThreadSync Sync;
-
-		return m_TCPSocket.ReadForIOCP(m_RecvOverlapped);
+	inline TCPIP::CTCPIPSocket* const GetTCPSocket() const { return m_TCPIPSocket; }
+	inline UDPIP::CUDPIPSocket* const GetUDPSocket() const { return m_UDPIPSocket; }
+	inline OVERLAPPED_EX* GetOverlappedByIOType(const EIOTYPE& Type = EIOTYPE::EIOTYPE_NONE) {
+		switch (Type) {
+		case EIOTYPE::EIOTYPE_ACCEPT:
+			return &m_AcceptOverlapped;
+		case EIOTYPE::EIOTYPE_READ:
+			return &m_RecvOverlapped;
+		case EIOTYPE::EIOTYPE_WRITE:
+			return &m_SendOverlapped;
+		default:
+			return nullptr;
+		}
 	}
-
-public:
-	inline SOCKET GetSocket() const { return m_TCPSocket.GetSocket(); }
 
 };

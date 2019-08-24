@@ -1,27 +1,19 @@
 #pragma once
-#include <string>
 #include "NetworkSession/NetworkSession.h"
 #include "../../Functions/BasePacket/BasePacket.h"
-#include "../../Functions/CircularQueue/CircularQueue.h"
+
+using namespace PACKET;
 
 class CPacketSession : public CNetworkSession {
 private:
-	CHAR m_PacketBuffer[MAX_RECEIVE_BUFFER_LENGTH];
-	size_t m_CurrentReadBytes;
+	char m_PacketBuffer[MAX_RECEIVE_BUFFER_LENGTH];
 
 private:
 	PACKET_INFORMATION m_PacketInformation;
-
-private:
-	CCircularQueue m_WriteQueue;
-
-private:
-	inline void MoveBufferMemory(const uint16_t& MoveLength) {
-		MoveMemory(m_PacketBuffer, m_PacketBuffer + MoveLength, m_CurrentReadBytes);
-	}
+	uint16_t m_CurrentReceiveBytes;
 
 protected:
-	virtual CBasePacket* GetPacket(const uint8_t& PacketType, const CHAR* Buffer, const USHORT& PacketSize) = 0;
+	virtual DETAIL::CBasePacket* GetPacketObjectByInformation(const PACKET_INFORMATION& PacketInfo, const char* PacketBuffer) = 0;
 
 public:
 	CPacketSession();
@@ -31,46 +23,17 @@ public:
 	virtual bool Destroy() override;
 
 public:
-	template<typename T>
-	bool Write(const T& Packet) {
-		CThreadSync Sync;
-
-		if (std::is_arithmetic<T>() || std::is_enum<T>()) {
-			CLog::WriteLog(L"Write : Only Types Support That Inherit BasePacket!");
-			return;
-		}
-
-		std::string Buffer;
-		Serialize(Packet, Buffer);
-
-		PACKET_INFORMATION PacketInformation(Buffer.length(), Packet.m_PacketType);
-
-		if (const CHAR* const TempBuffer = m_WriteQueue.Push(QUEUE_DATA(this, Buffer.c_str(), Buffer.length()))) {
-			return CNetworkSession::Write(PacketInformation, TempBuffer, Buffer.length());
-		}
-		return false;
-	}
+	PACKET::DETAIL::CBasePacket* PacketAnalysis();
 
 public:
-	inline bool CopyIOCPBuffer(const USHORT& DataLength) {
-		CThreadSync Sync;
-
-		if (!CNetworkSession::CopyIOCPBuffer(m_PacketBuffer + m_CurrentReadBytes, DataLength)) {
+	inline bool CopyReceiveBuffer(const uint16_t& RecvBytes) {
+		if (RecvBytes <= 0) {
 			return false;
 		}
-		m_CurrentReadBytes += DataLength;
-		return true;
-	}
-	inline bool WriteComplete() {
-		CThreadSync Sync;
 
-		if (!m_WriteQueue.IsEmpty()) {
-			return m_WriteQueue.Pop();
-		}
-		return false;
+		bool Succeed = CSocketSystem::CopyReceiveBuffer(GetTCPSocket(), m_PacketBuffer + m_CurrentReceiveBytes, RecvBytes);
+		m_CurrentReceiveBytes += RecvBytes;
+		return Succeed;
 	}
-
-public:
-	CBasePacket* PacketAnalysis();
 
 };

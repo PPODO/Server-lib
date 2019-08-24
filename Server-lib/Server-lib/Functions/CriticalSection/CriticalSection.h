@@ -7,7 +7,7 @@ private:
 
 public:
 	CCriticalSection() {
-		InitializeCriticalSection(&m_CriticalSection);
+		InitializeCriticalSectionEx(&m_CriticalSection, 0, 0);
 	}
 
 	~CCriticalSection() {

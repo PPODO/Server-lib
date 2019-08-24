@@ -1,55 +1,48 @@
 #pragma once
-#include "../../Functions/Log/Log.h"
-#include "../../Functions/SocketAddress/SocketAddress.h"
-#include "../../Functions/Queue/Queue.h"
-#include "../../Functions/ThreadSync/ThreadSync.h"
+#include "../PacketSession/PacketSession.h"
 #include <vector>
 #include <thread>
 
-class CIOCP : public CMultiThreadSync<CIOCP> {
+class CIOCP {
 private:
 	WSADATA m_WinSockData;
 
 private:
 	HANDLE m_hIOCP;
-	HANDLE m_hWaitForInitalization;
+	HANDLE m_hWaitForInitialize;
 
 private:
-	std::vector<std::thread> m_WorkerThreads;
+	std::vector<std::thread> m_WorkerThread;
 
 private:
-	bool WorkerThreadProcess();
+	bool CreateWorkerThread();
+	bool ProcessWorkerThread();
 
 protected:
-	 CQueue m_PacketProcessingQueue;
+	virtual bool OnIOConnect(void* const Object) = 0;
+	virtual bool OnIODisconnect(void* const Object) = 0;
+	virtual bool OnIORead(void* const Object, const uint16_t& RecvBytes) = 0;
+	virtual bool OnIOWrite(void* const Object) = 0;
 
 protected:
-	virtual bool OnIOAccept(void* Object) = 0;
-	virtual bool OnIODisconnect(void* Object) = 0;
-	virtual bool OnIORead(void* Object, const USHORT& RecvBytes) = 0;
-	virtual bool OnIOWrite(void* Object) = 0;
-	virtual bool PacketProcessing() = 0;
-
-protected:
-	void CreateWorkerThread();
-
-protected:
-	inline bool RegisterIOCompletionPort(const SOCKET& Socket, const ULONG_PTR& CompletionPort) {
+	inline bool RegisterIOCompletionPort(const SOCKET& Socket, const ULONG_PTR& CompletionKey) {
 		if (Socket == INVALID_SOCKET || m_hIOCP == NULL) {
 			CLog::WriteLog(L"Register IO Completion Port : Invalid Socket or Invalid Handle Value!");
 			return false;
 		}
 
-		if ((m_hIOCP = CreateIoCompletionPort(reinterpret_cast<HANDLE>(Socket), m_hIOCP, CompletionPort, 0)) == NULL) {
+		if ((m_hIOCP = CreateIoCompletionPort(reinterpret_cast<HANDLE>(Socket), m_hIOCP, CompletionKey, 0)) == NULL) {
 			CLog::WriteLog(L"Register IO Completion Port : Failed To Register Completion Port!");
 			return false;
 		}
 		return true;
 	}
 
+protected:
+	inline HANDLE GetIOCPHandle() const { return m_hIOCP; }
+
 public:
 	CIOCP();
-	CIOCP(const CIOCP& iocp) = delete;
 
 public:
 	virtual bool Initialize();
