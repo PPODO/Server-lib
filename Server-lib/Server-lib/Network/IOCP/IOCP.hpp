@@ -1,5 +1,6 @@
 #pragma once
 #include "../PacketSession/PacketSession.h"
+#include "../../Functions/CircularQueue/CircularQueue.h"
 #include <vector>
 #include <thread>
 #include <array>
@@ -15,20 +16,26 @@ private:
 
 private:
 	SESSIONTYPE* m_ListenSession;
-	std::array<SESSIONTYPE*, MAX_CLIENT_COUNT> m_Clients;
+	std::vector<SESSIONTYPE*> m_Clients;
 
 private:
 	std::vector<std::thread> m_WorkerThread;
+	std::vector<std::thread> m_PacketThread;
+
+private:
+	CCircularQueue<PACKET_DATA*> m_PacketQueue;
 
 private:
 	bool CreateWorkerThread();
 	bool ProcessWorkerThread();
+	bool ProcessPacketThread();
 
 protected:
 	virtual bool OnIOConnect(void* const Object);
 	virtual bool OnIODisconnect(void* const Object);
-	virtual bool OnIORead(void* const Object, const uint16_t& RecvBytes) = 0;
-	virtual bool OnIOWrite(void* const Object) = 0;
+	virtual bool OnIORead(void* const Object, const uint16_t& RecvBytes);
+	virtual bool OnIOWrite(void* const Object);
+	virtual bool ProcessPacket(PACKET_DATA& PacketData) = 0;
 
 protected:
 	inline bool RegisterIOCompletionPort(const SOCKET& Socket, const ULONG_PTR& CompletionKey) {
@@ -48,7 +55,7 @@ protected:
 	inline HANDLE GetIOCPHandle() const { return m_hIOCP; }
 
 public:
-	CIOCP() : m_hIOCP(INVALID_HANDLE_VALUE), m_hWaitForInitialize(INVALID_HANDLE_VALUE), m_ListenSession(nullptr) {};
+	CIOCP() : m_hIOCP(INVALID_HANDLE_VALUE), m_hWaitForInitialize(INVALID_HANDLE_VALUE), m_ListenSession(nullptr) { m_Clients.resize(MAX_CLIENT_COUNT); };
 
 public:
 	virtual bool Initialize();
@@ -100,6 +107,8 @@ bool CIOCP<SESSIONTYPE, MAX_CLIENT_COUNT>::Initialize() {
 		}
 	}
 
+	m_PacketThread.push_back(std::thread(&CIOCP::ProcessPacketThread, this));
+
 	if (!CreateWorkerThread()) {
 		CLog::WriteLog(L"Create Worker Thread : Failed To Create Worker Thread!");
 		return false;
@@ -119,22 +128,27 @@ bool CIOCP<SESSIONTYPE, MAX_CLIENT_COUNT>::Destroy() {
 	}
 	m_WorkerThread.clear();
 
-	/*	for (auto& Iterator : m_Clients) {
-			if (Iterator) {
-				Iterator->Destroy();
-				delete Iterator;
-			}
-			else {
-				break;
-			}
-		}
-		m_Clients.clear();
+	for (auto& Iterator : m_PacketThread) {
+		Iterator.join();
+	}
+	m_PacketThread.clear();
 
-		if (m_ListenSession) {
-			m_ListenSession->Destroy();
-			delete m_ListenSession;
-			m_ListenSession = nullptr;
-		}*/
+	for (auto& Iterator : m_Clients) {
+		if (CPacketSession * TempClient = reinterpret_cast<CPacketSession*>(Iterator)) {
+			TempClient->Destroy();
+			delete TempClient;
+		}
+		else {
+			break;
+		}
+	}
+	m_Clients.clear();
+
+	if (CPacketSession * TempSession = reinterpret_cast<CPacketSession*>(m_ListenSession)) {
+		TempSession->Destroy();
+		delete TempSession;
+		TempSession = nullptr;
+	}
 
 	if (m_hWaitForInitialize) {
 		CloseHandle(m_hWaitForInitialize);
@@ -207,6 +221,21 @@ bool CIOCP<SESSIONTYPE, MAX_CLIENT_COUNT>::ProcessWorkerThread() {
 }
 
 template<typename SESSIONTYPE, size_t MAX_CLIENT_COUNT>
+inline bool CIOCP<SESSIONTYPE, MAX_CLIENT_COUNT>::ProcessPacketThread() {
+	while (true) {
+		if (!m_PacketQueue.IsEmpty()) {
+			PACKET_DATA* Data = nullptr;
+			if (m_PacketQueue.Pop(Data) && Data) {
+				ProcessPacket(*Data);
+
+				delete Data;
+			}
+		}
+	}
+	return false;
+}
+
+template<typename SESSIONTYPE, size_t MAX_CLIENT_COUNT>
 bool CIOCP<SESSIONTYPE, MAX_CLIENT_COUNT>::OnIOConnect(void* const Object) {
 	if (CPacketSession * Client = reinterpret_cast<CPacketSession*>(Object)) {
 		if (RegisterIOCompletionPort(CSocketSystem::GetSocketByClass(Client->GetTCPSocket()), reinterpret_cast<ULONG_PTR>(Client)) && CSocketSystem::Receive(Client->GetTCPSocket(), Client->GetOverlappedByIOType(EIOTYPE::EIOTYPE_READ))) {
@@ -229,5 +258,26 @@ bool CIOCP<SESSIONTYPE, MAX_CLIENT_COUNT>::OnIODisconnect(void* const Object) {
 		}
 	}
 	CLog::WriteLog(L"On IO Disconnect : Failed To Disconnect Client!");
+	return false;
+}
+
+template<typename SESSIONTYPE, size_t MAX_CLIENT_COUNT>
+bool CIOCP<SESSIONTYPE, MAX_CLIENT_COUNT>::OnIORead(void* const Object, const uint16_t& RecvBytes) {
+	if (CPacketSession* Client = reinterpret_cast<CPacketSession*>(Object)) {
+		if (Client->CopyReceiveBuffer(RecvBytes)) {
+			if (PACKET_DATA* NewPacketData = Client->PacketAnalysis()) {
+				m_PacketQueue.Push(NewPacketData);
+			}
+		}
+		return CSocketSystem::Receive(Client->GetTCPSocket(), Client->GetOverlappedByIOType(EIOTYPE::EIOTYPE_READ));
+	}
+	return false;
+}
+
+template<typename SESSIONTYPE, size_t MAX_CLIENT_COUNT>
+bool CIOCP<SESSIONTYPE, MAX_CLIENT_COUNT>::OnIOWrite(void* const Object) {
+	if (CPacketSession * Client = reinterpret_cast<CPacketSession*>(Object)) {
+		Client->WriteCompletion();
+	}
 	return false;
 }

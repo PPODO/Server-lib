@@ -18,7 +18,7 @@ bool CPacketSession::Destroy() {
 	return CNetworkSession::Destroy();
 }
 
-PACKET::DETAIL::CBasePacket* CPacketSession::PacketAnalysis() {
+PACKET_DATA* CPacketSession::PacketAnalysis() {
 
 	while (m_CurrentReceiveBytes > 0) {
 		if (m_PacketInformation.m_PacketSize == 0 && m_CurrentReceiveBytes >= PACKET_INFORMATION::GetSize()) {
@@ -36,13 +36,17 @@ PACKET::DETAIL::CBasePacket* CPacketSession::PacketAnalysis() {
 
 		if (m_CurrentReceiveBytes >= m_PacketInformation.m_PacketSize) {
 			std::cout << m_CurrentReceiveBytes << std::endl;
-			PACKET::DETAIL::CBasePacket* NewPacket = GetPacketObjectByInformation(m_PacketInformation, m_PacketBuffer);
+			DETAIL::CBasePacket* NewPacket = GetPacketObjectByInformation(m_PacketInformation, m_PacketBuffer);
+			if (NewPacket) {
+				PACKET_DATA* NewPacketData = new PACKET_DATA(this, NewPacket, m_PacketInformation.m_PacketType);
 
-			MoveMemory(m_PacketBuffer, m_PacketBuffer + m_PacketInformation.m_PacketSize, m_CurrentReceiveBytes - m_PacketInformation.m_PacketSize);
-			m_CurrentReceiveBytes -= m_PacketInformation.m_PacketSize;
-			ZeroMemory(&m_PacketInformation, sizeof(PACKET_INFORMATION));
+				MoveMemory(m_PacketBuffer, m_PacketBuffer + m_PacketInformation.m_PacketSize, m_CurrentReceiveBytes - m_PacketInformation.m_PacketSize);
+				m_CurrentReceiveBytes -= m_PacketInformation.m_PacketSize;
+				ZeroMemory(&m_PacketInformation, sizeof(PACKET_INFORMATION));
 
-			return NewPacket;
+				return NewPacketData;
+			}
+			return nullptr;
 		}
 
 	}

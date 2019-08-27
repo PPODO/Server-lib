@@ -37,17 +37,21 @@ public:
 
 struct PACKET_DATA : public BASE_QUEUE_DATA<PACKET_DATA> {
 public:
-	PACKET_DATA(const void* Owner, const void* Packet) : BASE_QUEUE_DATA(Owner, Packet) {}
+	uint8_t m_PacketType;
+
+public:
+	PACKET_DATA() : m_PacketType(0) {};
+	PACKET_DATA(const void* Owner, const void* Packet, const uint8_t& PacketType) : BASE_QUEUE_DATA(Owner, Packet), m_PacketType(PacketType){}
 
 };
 
-template<typename T>
+template<typename QUEUEDATATYPE>
 class CCircularQueue {
 private:
 	CCriticalSection m_ListLock;
 
 private:
-	T m_Queue[MAX_QUEUE_LENGTH];
+	QUEUEDATATYPE m_Queue[MAX_QUEUE_LENGTH];
 
 private:
 	size_t m_Head, m_Tail;
@@ -56,7 +60,7 @@ public:
 	CCircularQueue() : m_Head(0), m_Tail(0) { ZeroMemory(&m_Queue, MAX_QUEUE_LENGTH); }
 
 public:
-	const const T& const Push(const T& InData) {
+	const const QUEUEDATATYPE& const Push(const QUEUEDATATYPE& InData) {
 		CCriticalSectionGuard Lock(m_ListLock);
 
 		size_t TempTail = (m_Tail + 1) % MAX_QUEUE_LENGTH;
@@ -76,12 +80,12 @@ public:
 		if (TempHead == m_Head) {
 			return false;
 		}
-		m_Queue[TempHead] = T();
+		m_Queue[TempHead] = QUEUEDATATYPE();
 		m_Head = TempHead;
 		return true;
 	}
 
-	bool Pop(T& InData) {
+	bool Pop(QUEUEDATATYPE& InData) {
 		CCriticalSectionGuard Lock(m_ListLock);
 
 		size_t TempHead = (m_Head + 1) % MAX_QUEUE_LENGTH;

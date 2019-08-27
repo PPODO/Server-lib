@@ -27,7 +27,7 @@ public:
 	virtual bool Destroy() override;
 
 public:
-	PACKET::DETAIL::CBasePacket* PacketAnalysis();
+	PACKET_DATA* PacketAnalysis();
 	bool Write(const PACKET_INFORMATION& PacketInfo, const char* const DataBuffer, const uint16_t& DataLength);
 	bool WriteCompletion();
 
