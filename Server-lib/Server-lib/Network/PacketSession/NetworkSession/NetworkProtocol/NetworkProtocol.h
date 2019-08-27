@@ -2,6 +2,8 @@
 #include <thread>
 #include "../../../../Functions/SocketUtil/SocketUtil.h"
 #include "../../../../Functions/SocketAddress/SocketAddress.h"
+#include "../../../../Functions/CircularQueue/CircularQueue.h"
+#include "../../../../Functions/BasePacket/BasePacket.h"
 
 struct OVERLAPPED_EX;
 
@@ -64,7 +66,7 @@ namespace PROTOCOL {
 			bool ReceiveForEventSelect(char* InBuffer, uint16_t& DataLength, OVERLAPPED_EX& ReceiveOverlapped);
 
 		public:
-			bool Write(const char* OutBuffer, const uint16_t& DataLength, OVERLAPPED_EX& SendOverlapped);
+			bool Write(const PACKET::PACKET_INFORMATION& PacketInfo, const char* OutBuffer, const uint16_t& DataLength, OVERLAPPED_EX& SendOverlapped);
 
 		};
 	}
@@ -173,9 +175,9 @@ namespace PROTOCOL {
 			return false;
 		}
 
-		static bool Write(PROTOCOL::TCPIP::CTCPIPSocket* const Socket, const char* const DataBuffer, const uint16_t& DataLength, OVERLAPPED_EX* const Overlapped) {
+		static bool Write(PROTOCOL::TCPIP::CTCPIPSocket* const Socket, const PACKET::PACKET_INFORMATION& PacketInfo, const char* const DataBuffer, const uint16_t& DataLength, OVERLAPPED_EX* const Overlapped) {
 			if (Socket && DataBuffer && Overlapped) {
-				return Socket->Write(DataBuffer, DataLength, *Overlapped);
+				return Socket->Write(PacketInfo, DataBuffer, DataLength, *Overlapped);
 			}
 			return false;
 		}

@@ -1,4 +1,5 @@
 #include "NetworkProtocol.h"
+#include "../../PacketSession.h"
 #include <MSWSock.h>
 #pragma comment(lib, "mswsock.lib")
 
@@ -109,7 +110,11 @@ bool TCPIP::CTCPIPSocket::Accept(const SOCKET& ListenSocket, OVERLAPPED_EX& Acce
 }
 
 bool TCPIP::CTCPIPSocket::Destroy() {
-
+	SOCKET Socket = GetSocket();
+	if (Socket != INVALID_SOCKET) {
+		closesocket(Socket);
+		SetSocket(INVALID_SOCKET);
+	}
 	// 소켓재활ㅇ요용
 	return true;
 }
@@ -146,11 +151,24 @@ bool TCPIP::CTCPIPSocket::InitializeReceiveForIOCP(OVERLAPPED_EX& ReceiveOverlap
 	return true;
 }
 
-bool TCPIP::CTCPIPSocket::Write(const char* OutBuffer, const uint16_t& DataLength, OVERLAPPED_EX& SendOverlapped) {
+bool TCPIP::CTCPIPSocket::Write(const PACKET::PACKET_INFORMATION& PacketInfo, const char* OutBuffer, const uint16_t& DataLength, OVERLAPPED_EX& SendOverlapped) {
 	DWORD SendBytes = 0;
+
+	WSABUF InfoBuffer;
+	InfoBuffer.buf = const_cast<char*>(reinterpret_cast<const char*>(&PacketInfo));
+	InfoBuffer.len = PACKET::PACKET_INFORMATION::GetSize();
+
 	WSABUF SendBuffer;
 	SendBuffer.buf = const_cast<char*>(OutBuffer);
 	SendBuffer.len = DataLength;
+	
+	
+	if (WSASend(GetSocket(), &InfoBuffer, 1, &SendBytes, 0, nullptr, nullptr) == SOCKET_ERROR) {
+		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
+			CLog::WriteLog(L"WSA Send : Failed To Send! - %d", WSAGetLastError());
+			return false;
+		}
+	}
 
 	if (WSASend(GetSocket(), &SendBuffer, 1, &SendBytes, 0, &SendOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
 		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {

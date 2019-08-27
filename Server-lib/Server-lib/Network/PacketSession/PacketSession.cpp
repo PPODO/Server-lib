@@ -48,3 +48,24 @@ PACKET::DETAIL::CBasePacket* CPacketSession::PacketAnalysis() {
 	}
 	return nullptr;
 }
+
+bool CPacketSession::Write(const PACKET_INFORMATION& PacketInfo, const char* const DataBuffer, const uint16_t& DataLength) {
+	if (DataBuffer) {
+		BUFFER_DATA* Data = new BUFFER_DATA(this, PacketInfo, DataBuffer, DataLength);
+		if (Data) {
+			m_WriteQueue.Push(Data);
+
+			return CSocketSystem::Write(GetTCPSocket(), Data->m_PacketInformation, Data->m_DataBuffer, Data->m_DataSize, GetOverlappedByIOType(EIOTYPE::EIOTYPE_WRITE));
+		}
+	}
+	return false;
+}
+
+bool CPacketSession::WriteCompletion() {
+	BUFFER_DATA* TempData = nullptr;
+	if (m_WriteQueue.Pop(TempData) && TempData) {
+		delete TempData;
+		return true;
+	}
+	return false;
+}

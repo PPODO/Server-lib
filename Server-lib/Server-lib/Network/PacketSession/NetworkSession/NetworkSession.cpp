@@ -4,6 +4,13 @@ CNetworkSession::CNetworkSession() : m_TCPIPSocket(new TCPIP::CTCPIPSocket), m_U
 }
 
 bool CNetworkSession::Initialize() {
+	if (!m_TCPIPSocket) {
+		m_TCPIPSocket = new TCPIP::CTCPIPSocket;
+	}
+	if (!m_UDPIPSocket) {
+		m_UDPIPSocket = new UDPIP::CUDPIPSocket;
+	}
+
 	ZeroMemory(&m_AcceptOverlapped, sizeof(OVERLAPPED_EX));
 	ZeroMemory(&m_SendOverlapped, sizeof(OVERLAPPED_EX));
 	ZeroMemory(&m_RecvOverlapped, sizeof(OVERLAPPED_EX));

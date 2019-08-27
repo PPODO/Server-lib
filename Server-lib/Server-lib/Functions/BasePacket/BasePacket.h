@@ -72,6 +72,9 @@ namespace PACKET {
 	public:
 		template<typename T>
 		static PACKET_INFORMATION Serialize(const T& Packet, std::string& Buffer) {
+			if (!std::is_base_of<DETAIL::CBasePacket, T>()) {
+				return PACKET_INFORMATION();
+			}
 			// string 변수에 데이터가 입력이 되려면 binary_oarchive의 소멸자가 호출되야 함.
 			{
 				boost::iostreams::stream<boost::iostreams::back_insert_device<std::string>> OutStream(Buffer);
@@ -84,6 +87,10 @@ namespace PACKET {
 
 		template<typename T>
 		static void DeSerialize(const char* Buffer, const USHORT& BufferLength, T& Packet) {
+			if (!std::is_base_of<DETAIL::CBasePacket, T>()) {
+				return;
+			}
+
 			boost::iostreams::stream_buffer<boost::iostreams::basic_array_source<char>> InStream(Buffer, BufferLength);
 			boost::archive::binary_iarchive ia(InStream, boost::archive::no_header);
 			ia >> Packet;
