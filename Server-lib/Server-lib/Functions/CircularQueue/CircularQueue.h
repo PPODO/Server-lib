@@ -26,7 +26,7 @@ public:
 
 public:
 	BUFFER_DATA() : m_DataSize(0) { ZeroMemory(&m_DataBuffer, MAX_RECEIVE_BUFFER_LENGTH); }
-	BUFFER_DATA(const void* Owner, const PACKET::PACKET_INFORMATION& PacketInfo, const char* DataBuffer, const USHORT& DataSize) : BASE_QUEUE_DATA(Owner, nullptr), m_PacketInformation(PacketInfo), m_DataSize(DataSize) {
+	BUFFER_DATA(const void* Owner, const PACKET::PACKET_INFORMATION& PacketInfo, const char* const DataBuffer, const USHORT& DataSize) : BASE_QUEUE_DATA(Owner, nullptr), m_PacketInformation(PacketInfo), m_DataSize(DataSize) {
 		if (DataSize > 0) {
 			ZeroMemory(&m_DataBuffer, MAX_RECEIVE_BUFFER_LENGTH);
 			CopyMemory(m_DataBuffer, DataBuffer, DataSize);
@@ -42,6 +42,20 @@ public:
 public:
 	PACKET_DATA() : m_PacketType(0) {};
 	PACKET_DATA(const void* Owner, const void* Packet, const uint8_t& PacketType) : BASE_QUEUE_DATA(Owner, Packet), m_PacketType(PacketType){}
+
+};
+
+struct RELIABLE_DATA : public BASE_QUEUE_DATA<RELIABLE_DATA> {
+public:
+	CSocketAddress m_RemoteAddress;
+	CHAR m_DataBuffer[MAX_RECEIVE_BUFFER_LENGTH];
+	USHORT m_DataSize;
+
+public:
+	RELIABLE_DATA() { ZeroMemory(&m_DataBuffer, MAX_RECEIVE_BUFFER_LENGTH); }
+	RELIABLE_DATA(const void* Owner, CSocketAddress& RemoteAddress, const char* const DataBuffer, const uint16_t& BufferLength) : BASE_QUEUE_DATA(Owner, nullptr), m_RemoteAddress(RemoteAddress), m_DataSize(BufferLength) {
+		CopyMemory(m_DataBuffer, DataBuffer, BufferLength);
+	}
 
 };
 

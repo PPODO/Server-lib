@@ -1,5 +1,5 @@
 #include "NetworkProtocol.h"
-#include "../../PacketSession.h"
+#include "../../NetworkSession/NetworkSession.h"
 #include <MSWSock.h>
 #pragma comment(lib, "mswsock.lib")
 
@@ -119,13 +119,13 @@ bool TCPIP::CTCPIPSocket::Destroy() {
 	return true;
 }
 
-bool TCPIP::CTCPIPSocket::ReceiveForEventSelect(char* InBuffer, uint16_t& BufferLength, OVERLAPPED_EX& ReceiveOverlapped) {
+bool TCPIP::CTCPIPSocket::ReceiveForEventSelect(char* InBuffer, uint16_t& BufferLength) {
 	DWORD RecvBytes = 0, Flags = 0;
 	WSABUF ReceiveBuffer;
 	ReceiveBuffer.buf = InBuffer;
 	ReceiveBuffer.len = MAX_RECEIVE_BUFFER_LENGTH;
 
-	if (WSARecv(GetSocket(), &ReceiveBuffer, 1, &RecvBytes, &Flags, &ReceiveOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
+	if (WSARecv(GetSocket(), &ReceiveBuffer, 1, &RecvBytes, &Flags, nullptr, nullptr) == SOCKET_ERROR) {
 		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
 			CLog::WriteLog(L"WSA Recv : Failed To Receive! - %d", WSAGetLastError());
 			return false;
@@ -179,7 +179,9 @@ bool TCPIP::CTCPIPSocket::Write(const PACKET::PACKET_INFORMATION& PacketInfo, co
 	return true;
 }
 
-UDPIP::CUDPIPSocket::CUDPIPSocket() {
+
+
+UDPIP::CUDPIPSocket::CUDPIPSocket() : m_hWakeupThreadEvent(INVALID_HANDLE_VALUE), m_hSendCompleteEvent(INVALID_HANDLE_VALUE), m_hWaitForInitialize(INVALID_HANDLE_VALUE), m_hStop(INVALID_HANDLE_VALUE), m_bIsReliableSending(false) {
 	SetProtocolType(EPROTOCOLTYPE::EPT_UDP);
 }
 
@@ -196,12 +198,68 @@ bool UDPIP::CUDPIPSocket::Initialize() {
 	}
 	SetSocket(Socket);
 
+	if (!(m_hWakeupThreadEvent = CreateEvent(nullptr, false, false, nullptr))) {
+		CLog::WriteLog(L"");
+		return false;
+	}
+
+	if (!(m_hSendCompleteEvent = CreateEvent(nullptr, false, false, nullptr))) {
+		CLog::WriteLog(L"");
+		return false;
+	}
+
+	if (!(m_hWaitForInitialize = CreateEvent(nullptr, false, false, nullptr))) {
+		CLog::WriteLog(L"");
+		return false;
+	}
+
+	if (!(m_hStop = CreateEvent(nullptr, false, false, nullptr))) {
+		CLog::WriteLog(L"");
+		return false;
+	}
+
+	m_ReliableThread = std::thread(&UDPIP::CUDPIPSocket::ProcessReliable, this);
+
+	WaitForSingleObject(m_hWaitForInitialize, INFINITE);
+	return true;
+}
+
+bool PROTOCOL::UDPIP::CUDPIPSocket::Bind(const CSocketAddress& Address) {
+	if (GetSocket() == INVALID_SOCKET) {
+		CLog::WriteLog(L"Bind : Socket is Invalid!");
+		return false;
+	}
+
+	if (bind(GetSocket(), reinterpret_cast<const sockaddr*>(&Address), Address.GetSize()) == SOCKET_ERROR) {
+		CLog::WriteLog(L"Bind : Failed To Bind Socket!");
+		return false;
+	}
 	return true;
 }
 
 bool UDPIP::CUDPIPSocket::Destroy() {
+	SetEvent(m_hStop);
 	m_ReliableThread.joinable();
 
+	if (m_hStop) {
+		CloseHandle(m_hStop);
+		m_hStop = INVALID_HANDLE_VALUE;
+	}
+
+	if (m_hWaitForInitialize) {
+		CloseHandle(m_hWaitForInitialize);
+		m_hWaitForInitialize = INVALID_HANDLE_VALUE;
+	}
+
+	if (m_hSendCompleteEvent) {
+		CloseHandle(m_hSendCompleteEvent);
+		m_hSendCompleteEvent = INVALID_HANDLE_VALUE;
+	}
+
+	if (m_hWakeupThreadEvent) {
+		CloseHandle(m_hWakeupThreadEvent);
+		m_hWakeupThreadEvent = INVALID_HANDLE_VALUE;
+	}
 	return true;
 }
 
@@ -217,19 +275,17 @@ bool UDPIP::CUDPIPSocket::InitializeReceiveFromForIOCP(CSocketAddress& ReceiveAd
 			return false;
 		}
 	}
-	
-	// Reliable
 	return true;
 }
 
-bool UDPIP::CUDPIPSocket::ReceiveFromForEventSelect(char* InBuffer, CSocketAddress& ReceiveAddress, uint16_t& DataLength, OVERLAPPED_EX& ReceiveOverlapped) {
+bool UDPIP::CUDPIPSocket::ReceiveFromForEventSelect(char* InBuffer, CSocketAddress& ReceiveAddress, uint16_t& DataLength) {
 	DWORD RecvBytes = 0, Flags = 0;
 	WSABUF ReceiveBuffer;
 	ReceiveBuffer.buf = InBuffer;
 	ReceiveBuffer.len = MAX_RECEIVE_BUFFER_LENGTH;
 
 	int AddressLen = CSocketAddress::GetSize();
-	if (WSARecvFrom(GetSocket(), &ReceiveBuffer, 1, &RecvBytes, &Flags, reinterpret_cast<sockaddr*>(&ReceiveAddress), &AddressLen, &ReceiveOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
+	if (WSARecvFrom(GetSocket(), &ReceiveBuffer, 1, &RecvBytes, &Flags, reinterpret_cast<sockaddr*>(&ReceiveAddress), &AddressLen, nullptr, nullptr) == SOCKET_ERROR) {
 		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
 			return false;
 		}
@@ -245,10 +301,62 @@ bool UDPIP::CUDPIPSocket::WriteTo(const CSocketAddress& SendAddress, const char*
 	WSABUF SendBuffer;
 	SendBuffer.buf = const_cast<char*>(OutBuffer);
 	SendBuffer.len = DataLength;
+	
+	
 
 	if (WSASendTo(GetSocket(), &SendBuffer, 1, &SendBytes, 0, reinterpret_cast<const sockaddr*>(&SendAddress), CSocketAddress::GetSize(), &SendOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
 		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
 			return false;
+		}
+	}
+	return true;
+}
+
+bool PROTOCOL::UDPIP::CUDPIPSocket::WriteToQueue(const RELIABLE_DATA* const Data) {
+	if (Data && m_ReliableQueue.Push(const_cast<RELIABLE_DATA * const&>(Data))) {
+		if (!m_bIsReliableSending) {
+			return SetEvent(m_hWakeupThreadEvent);
+		}
+		return true;
+	}
+	return false;
+}
+
+bool UDPIP::CUDPIPSocket::ProcessReliable() {
+	HANDLE Events[2] = { m_hStop, m_hWakeupThreadEvent };
+	DWORD EventType = 0;
+
+	while (true) {
+		EventType = WaitForMultipleObjects(2, Events, false, INFINITE);
+
+		switch (EventType) {
+		case WAIT_OBJECT_0:
+			return false;
+		case WAIT_OBJECT_0 + 1:
+			RELIABLE_DATA * ReliableData = nullptr;
+			while (!m_ReliableQueue.IsEmpty()) {
+				if (m_ReliableQueue.Pop(ReliableData) && ReliableData) {
+					CNetworkSession* Owner = reinterpret_cast<CNetworkSession*>(ReliableData->m_Owner);
+					// for(){}
+					if (!Owner || !WriteTo(ReliableData->m_RemoteAddress, ReliableData->m_DataBuffer, ReliableData->m_DataSize, *Owner->GetOverlappedByIOType(EIOTYPE::EIOTYPE_WRITE))) {
+						break;
+					}
+
+					DWORD Result = WaitForSingleObject(m_hSendCompleteEvent, 10);
+
+					if (Result == WAIT_OBJECT_0) {
+						break;
+					}
+					else {
+						continue;
+					}
+				}
+				else {
+					break;
+				}
+			}
+			m_bIsReliableSending = false;
+			break;
 		}
 	}
 	return true;

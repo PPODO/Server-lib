@@ -11,10 +11,12 @@ private:
 
 private:
 	CCircularQueue<BUFFER_DATA*> m_WriteQueue;
+	CCircularQueue<BUFFER_DATA*> m_WaitQueue;
 
 private:
 	PACKET_INFORMATION m_PacketInformation;
 	uint16_t m_CurrentReceiveBytes;
+	uint16_t m_LastReceivedPacketNumber;
 
 protected:
 	virtual DETAIL::CBasePacket* GetPacketObjectByInformation(const PACKET_INFORMATION& PacketInfo, const char* PacketBuffer) = 0;
@@ -32,14 +34,30 @@ public:
 	bool WriteCompletion();
 
 public:
-	inline bool CopyReceiveBuffer(const uint16_t& RecvBytes) {
+	// IOCP Only
+	inline bool CopyReceiveBuffer(PROTOCOL::CProtocol* const Socket, const uint16_t& RecvBytes) {
 		if (RecvBytes <= 0) {
 			return false;
 		}
 
-		bool Succeed = CSocketSystem::CopyReceiveBuffer(GetTCPSocket(), m_PacketBuffer + m_CurrentReceiveBytes, RecvBytes);
+		bool Succeed = CSocketSystem::CopyReceiveBuffer(Socket, m_PacketBuffer + m_CurrentReceiveBytes, RecvBytes);
 		m_CurrentReceiveBytes += RecvBytes;
 		return Succeed;
 	}
+
+	// EventSelect Only
+	inline bool ReceiveEventSelect() {
+		uint16_t RecvBytes = 0;
+		
+		if (CSocketSystem::ReceiveEventSelect(GetTCPSocket(), m_PacketBuffer, RecvBytes)) {
+			m_CurrentReceiveBytes += RecvBytes;
+
+			return true;
+		}
+		return false;
+	}
+
+public:
+	inline uint16_t GetLastReceivedPacketNumber() const { return m_LastReceivedPacketNumber; }
 
 };

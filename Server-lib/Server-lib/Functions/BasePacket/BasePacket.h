@@ -28,13 +28,15 @@ namespace PACKET {
 			template<typename Archive>
 			void serialize(Archive& ar, const unsigned int Version) {
 				ar& m_MessageType;
+				ar& m_PacketNumber;
 			}
 
 		public:
 			uint8_t m_MessageType;
+			uint16_t m_PacketNumber;
 
 		public:
-			CBasePacket(const uint8_t& PacketType, const uint8_t& MessageType) : m_PacketType(PacketType), m_MessageType(MessageType) {}
+			CBasePacket(const uint8_t& PacketType, const uint8_t& MessageType, const uint16_t& PacketNumber) : m_PacketType(PacketType), m_MessageType(MessageType), m_PacketNumber(PacketNumber) {}
 
 		};
 
@@ -58,7 +60,7 @@ namespace PACKET {
 	class CPacket : public DETAIL::CBasePacket, public CMemoryPool<T, PoolSize> {
 		friend boost::serialization::access;
 	public:
-		CPacket(const uint8_t& PacketType, const uint8_t& MessageType) : DETAIL::CBasePacket(PacketType, MessageType) {}
+		CPacket(const uint8_t& PacketType, const uint8_t& MessageType, const uint16_t& PacketNumber) : DETAIL::CBasePacket(PacketType, MessageType, PacketNumber) {}
 
 	protected:
 		template<typename Archive>
@@ -81,8 +83,8 @@ namespace PACKET {
 				boost::archive::binary_oarchive oa(OutStream, boost::archive::no_header);
 				oa << Packet;
 			}
-			
-			return PACKET_INFORMATION(Buffer.length(), reinterpret_cast<const DETAIL::CBasePacket*>(&Packet)->m_PacketType);
+
+			return PACKET_INFORMATION(Buffer.length(), reinterpret_cast<const DETAIL::CBasePacket*>(Packet)->m_PacketType);
 		}
 
 		template<typename T>

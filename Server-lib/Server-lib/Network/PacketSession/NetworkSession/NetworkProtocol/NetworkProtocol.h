@@ -63,7 +63,7 @@ namespace PROTOCOL {
 			bool InitializeReceiveForIOCP(OVERLAPPED_EX& ReceiveOverlapped);
 
 		public:
-			bool ReceiveForEventSelect(char* InBuffer, uint16_t& DataLength, OVERLAPPED_EX& ReceiveOverlapped);
+			bool ReceiveForEventSelect(char* InBuffer, uint16_t& DataLength);
 
 		public:
 			bool Write(const PACKET::PACKET_INFORMATION& PacketInfo, const char* OutBuffer, const uint16_t& DataLength, OVERLAPPED_EX& SendOverlapped);
@@ -76,20 +76,37 @@ namespace PROTOCOL {
 		private:
 			std::thread m_ReliableThread;
 
+		private:
+			HANDLE m_hWaitForInitialize;
+			HANDLE m_hWakeupThreadEvent;
+			HANDLE m_hSendCompleteEvent;
+			HANDLE m_hStop;
+
+		private:
+			bool m_bIsReliableSending;
+
+		private:
+			CCircularQueue<RELIABLE_DATA*> m_ReliableQueue;
+
+		private:
+			bool ProcessReliable();
+
 		public:
 			CUDPIPSocket();
 
 		public:
 			bool Initialize();
+			bool Bind(const CSocketAddress& Address);
 			bool Destroy();
 
 		public:
 			bool InitializeReceiveFromForIOCP(CSocketAddress& ReceiveAddress, OVERLAPPED_EX& ReceiveOverlapped);
 
 		public:
-			bool ReceiveFromForEventSelect(char* InBuffer, CSocketAddress& ReceiveAddress, uint16_t& DataLength, OVERLAPPED_EX& ReceiveOverlapped);
+			bool ReceiveFromForEventSelect(char* InBuffer, CSocketAddress& ReceiveAddress, uint16_t& DataLength);
 
 		public:
+			bool WriteToQueue(const RELIABLE_DATA* const Data);
 			bool WriteTo(const CSocketAddress& SendAddress, const char* OutBuffer, const uint16_t& DataLength, OVERLAPPED_EX& SendOverlapped);
 
 		};
@@ -101,6 +118,18 @@ namespace PROTOCOL {
 		static bool InitializeSocket(PROTOCOL::CProtocol* const Socket) {
 			if (Socket) {
 				return Socket->Initialize();
+			}
+			return false;
+		}
+
+		static bool Bind(PROTOCOL::CProtocol* const Socket, const CSocketAddress& BindAddress, const uint16_t& BackLogCount = SOMAXCONN) {
+			if (Socket) {
+				switch (Socket->GetProtocolType()) {
+				case EPROTOCOLTYPE::EPT_TCP:
+					return reinterpret_cast<PROTOCOL::TCPIP::CTCPIPSocket*>(Socket)->Listen(BindAddress, BackLogCount);
+				case EPROTOCOLTYPE::EPT_UDP:
+					return reinterpret_cast<PROTOCOL::UDPIP::CUDPIPSocket*>(Socket)->Bind(BindAddress);
+				}
 			}
 			return false;
 		}
@@ -147,13 +176,6 @@ namespace PROTOCOL {
 
 	public:
 		// TCP
-		static bool Listen(PROTOCOL::TCPIP::CTCPIPSocket* const Socket, const CSocketAddress& BindAddress, const uint16_t& BackLogCount = SOMAXCONN) {
-			if (Socket) {
-				return Socket->Listen(BindAddress, BackLogCount);
-			}
-			return false;
-		}
-
 		static bool Connect(PROTOCOL::TCPIP::CTCPIPSocket* const Socket, const CSocketAddress& ConnectionAddress) {
 			if (Socket) {
 				return Socket->Connect(ConnectionAddress);
@@ -175,6 +197,13 @@ namespace PROTOCOL {
 			return false;
 		}
 
+		static bool ReceiveEventSelect(PROTOCOL::TCPIP::CTCPIPSocket* const Socket, char* const Buffer, uint16_t& RecvBytes) {
+			if (Socket) {
+				return Socket->ReceiveForEventSelect(Buffer, RecvBytes);
+			}
+			return false;
+		}
+
 		static bool Write(PROTOCOL::TCPIP::CTCPIPSocket* const Socket, const PACKET::PACKET_INFORMATION& PacketInfo, const char* const DataBuffer, const uint16_t& DataLength, OVERLAPPED_EX* const Overlapped) {
 			if (Socket && DataBuffer && Overlapped) {
 				return Socket->Write(PacketInfo, DataBuffer, DataLength, *Overlapped);
@@ -184,7 +213,6 @@ namespace PROTOCOL {
 
 	public:
 		// UDP
-
 		static bool ReceiveFrom(PROTOCOL::UDPIP::CUDPIPSocket* const Socket, CSocketAddress& ReceiveAddress, OVERLAPPED_EX* const Overlapped) {
 			if (Socket && Overlapped) {
 				return Socket->InitializeReceiveFromForIOCP(ReceiveAddress, *Overlapped);
@@ -195,6 +223,13 @@ namespace PROTOCOL {
 		static bool WriteTo(PROTOCOL::UDPIP::CUDPIPSocket* const Socket, const CSocketAddress& SendAddress, const char* const DataBuffer, const uint16_t& DataLength, OVERLAPPED_EX* const Overlapped) {
 			if (Socket && Overlapped) {
 				return Socket->WriteTo(SendAddress, DataBuffer, DataLength, *Overlapped);
+			}
+			return false;
+		}
+
+		static bool WriteToQueue(PROTOCOL::UDPIP::CUDPIPSocket* const Socket, const RELIABLE_DATA* const Data) {
+			if (Socket) {
+				return Socket->WriteToQueue(Data);
 			}
 			return false;
 		}

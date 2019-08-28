@@ -33,9 +33,10 @@ public:
 	};
 
 	CSocketAddress(const UINT16& Port) {
+		in_addr* IPAddress = GetHostIPAddress();
 		GetSockAddrIn()->sin_family = AF_INET;
 		GetSockAddrIn()->sin_port = htons(Port);
-		GetSockAddrIn()->sin_addr = *GetHostIPAddress();
+		GetSockAddrIn()->sin_addr = IPAddress ? *IPAddress : IN_ADDR();
 		ZeroMemory(&GetSockAddrIn()->sin_zero, sizeof(GetSockAddrIn()->sin_zero));
 	};
 
