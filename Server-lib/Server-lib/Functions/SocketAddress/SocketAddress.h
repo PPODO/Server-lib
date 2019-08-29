@@ -14,7 +14,7 @@ private:
 	inline sockaddr_in* GetSockAddrIn() { return reinterpret_cast<sockaddr_in*>(&m_Address); }
 
 private:
-	static inline in_addr* GetHostIPAddress() {
+	static inline in_addr* GetHostAddress() {
 		char HostName[32] = { "\0" };
 		if (gethostname(HostName, 32) == SOCKET_ERROR) {
 			CLog::WriteLog(L"Get Host Name is Failure! - %d", WSAGetLastError());
@@ -33,7 +33,7 @@ public:
 	};
 
 	CSocketAddress(const UINT16& Port) {
-		in_addr* IPAddress = GetHostIPAddress();
+		in_addr* IPAddress = GetHostAddress();
 		GetSockAddrIn()->sin_family = AF_INET;
 		GetSockAddrIn()->sin_port = htons(Port);
 		GetSockAddrIn()->sin_addr = IPAddress ? *IPAddress : IN_ADDR();
@@ -48,14 +48,19 @@ public:
 		InetPtonW(AF_INET, Address, &GetSockAddrIn()->sin_addr);
 	}
 
-	CSocketAddress(CSocketAddress& NewSocketAddress) {
+	CSocketAddress(const CSocketAddress& NewSocketAddress) {
 		CopyMemory(&m_Address, &NewSocketAddress.m_Address, GetSize());
 	}
 
 public:
-	static size_t GetSize() { return sizeof(m_Address); }
-	static const char* const GetIPAddress() {
-		return reinterpret_cast<const char* const>(GetHostIPAddress());
+	const char* const GetIPAddress() {
+		return inet_ntoa(GetSockAddrIn()->sin_addr);
 	}
 
+public:
+	static size_t GetSize() { return sizeof(m_Address); }
+	static const char* const GetHostIPAddress() {
+		return reinterpret_cast<const char* const>(GetHostAddress());
+	}
+	
 };

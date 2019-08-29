@@ -52,7 +52,7 @@ bool CEventSelect<SESSIONTYPE>::Initialize(const CSocketAddress& ConnectionAddre
 
 	m_Session = new SESSIONTYPE;
 	if (CPacketSession * TempSession = reinterpret_cast<CPacketSession*>(m_Session)) {
-		if (!TempSession->Initialize() || CSocketSystem::Connect(TempSession->GetTCPSocket(), ConnectionAddress)) {
+		if (!TempSession->Initialize(EPROTOCOLTYPE::EPT_TCP) || CSocketSystem::Connect(TempSession->GetTCPSocket(), ConnectionAddress)) {
 			return false;
 		}
 		m_SessionSocket = CSocketSystem::GetSocketByClass(TempSession->GetTCPSocket());
@@ -88,9 +88,11 @@ template<typename SESSIONTYPE>
 bool CEventSelect<SESSIONTYPE>::Destroy() {
 	SetEvent(m_hStopEvent);
 
-	m_SessionSocket = INVALID_SOCKET;
+	if (m_EventSelectThread.joinable()) {
+		m_EventSelectThread.join();
+	}
 
-	m_EventSelectThread.joinable();
+	m_SessionSocket = INVALID_SOCKET;
 
 	if (m_hWaitForInitialize) {
 		CloseHandle(m_hWaitForInitialize);

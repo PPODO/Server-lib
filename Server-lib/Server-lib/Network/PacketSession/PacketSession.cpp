@@ -6,8 +6,8 @@ CPacketSession::CPacketSession() : m_CurrentReceiveBytes(0), m_LastReceivedPacke
 	ZeroMemory(&m_PacketInformation, sizeof(PACKET_INFORMATION));
 }
 
-bool CPacketSession::Initialize() {
-	if (!CNetworkSession::Initialize()) {
+bool CPacketSession::Initialize(const EPROTOCOLTYPE& ProtocolType) {
+	if (!CNetworkSession::Initialize(ProtocolType)) {
 		return false;
 	}
 

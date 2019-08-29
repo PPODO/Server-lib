@@ -84,7 +84,7 @@ namespace PACKET {
 				oa << Packet;
 			}
 
-			return PACKET_INFORMATION(Buffer.length(), reinterpret_cast<const DETAIL::CBasePacket*>(Packet)->m_PacketType);
+			return PACKET_INFORMATION(Buffer.length(), reinterpret_cast<const DETAIL::CBasePacket*>(&Packet)->m_PacketType);
 		}
 
 		template<typename T>

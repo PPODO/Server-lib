@@ -3,7 +3,7 @@
 CNetworkSession::CNetworkSession() : m_TCPIPSocket(new TCPIP::CTCPIPSocket), m_UDPIPSocket(new UDPIP::CUDPIPSocket) {
 }
 
-bool CNetworkSession::Initialize() {
+bool CNetworkSession::Initialize(const EPROTOCOLTYPE& ProtocolType) {
 	if (!m_TCPIPSocket) {
 		m_TCPIPSocket = new TCPIP::CTCPIPSocket;
 	}
@@ -22,7 +22,7 @@ bool CNetworkSession::Initialize() {
 	m_AcceptOverlapped.m_Owner = m_RecvOverlapped.m_Owner = m_SendOverlapped.m_Owner = this;
 
 	// ¼öÁ¤
-	return CSocketSystem::InitializeSocket(m_TCPIPSocket);
+	return ProtocolType == EPROTOCOLTYPE::EPT_TCP ? CSocketSystem::InitializeSocket(m_TCPIPSocket) : CSocketSystem::InitializeSocket(m_UDPIPSocket);
 }
 
 bool CNetworkSession::Destroy() {

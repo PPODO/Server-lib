@@ -25,7 +25,7 @@ public:
 	CPacketSession();
 
 public:
-	virtual bool Initialize() override;
+	virtual bool Initialize(const EPROTOCOLTYPE& ProtocolType) override;
 	virtual bool Destroy() override;
 
 public:
@@ -35,7 +35,7 @@ public:
 
 public:
 	// IOCP Only
-	inline bool CopyReceiveBuffer(PROTOCOL::CProtocol* const Socket, const uint16_t& RecvBytes) {
+	inline bool CopyReceiveBuffer(PROTOCOL::CProtocol* const Socket, uint16_t& RecvBytes) {
 		if (RecvBytes <= 0) {
 			return false;
 		}

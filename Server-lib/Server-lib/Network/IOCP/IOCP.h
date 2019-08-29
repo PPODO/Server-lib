@@ -30,7 +30,7 @@ private:
 protected:
 	virtual bool OnIOConnect(void* const Object) = 0;
 	virtual bool OnIODisconnect(void* const Object) = 0;
-	virtual bool OnIORead(void* const Object, const uint16_t& RecvBytes) = 0;
+	virtual bool OnIORead(void* const Object, uint16_t& RecvBytes) = 0;
 	virtual bool OnIOWrite(void* const Object);
 	virtual bool ProcessPacket(PACKET_DATA& PacketData) = 0;
 

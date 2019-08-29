@@ -28,12 +28,6 @@ bool CIOCP::Initialize() {
 }
 
 bool CIOCP::Destroy() {
-	if (m_ListenSession) {
-		m_ListenSession->Destroy();
-		delete m_ListenSession;
-		m_ListenSession = nullptr;
-	}
-
 	for (auto& Iterator : m_WorkerThread) {
 		PostQueuedCompletionStatus(m_hIOCP, 0, 0, nullptr);
 		Iterator.join();
@@ -50,6 +44,11 @@ bool CIOCP::Destroy() {
 		m_hIOCP = INVALID_HANDLE_VALUE;
 	}
 
+	if (m_ListenSession) {
+		m_ListenSession->Destroy();
+		delete m_ListenSession;
+		m_ListenSession = nullptr;
+	}
 	WSACleanup();
 	return true;
 }
@@ -95,7 +94,7 @@ bool CIOCP::ProcessWorkerThread() {
 
 			switch (OverlappedEx->m_IOType) {
 			case EIOTYPE::EIOTYPE_READ:
-				OnIORead(OverlappedEx->m_Owner, RecvBytes);
+				OnIORead(OverlappedEx->m_Owner, reinterpret_cast<uint16_t&>(RecvBytes));
 				break;
 			case EIOTYPE::EIOTYPE_WRITE:
 				OnIOWrite(OverlappedEx->m_Owner);

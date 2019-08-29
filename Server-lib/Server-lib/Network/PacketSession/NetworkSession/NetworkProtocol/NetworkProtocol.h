@@ -1,5 +1,6 @@
 #pragma once
 #include <thread>
+#include <map>
 #include "../../../../Functions/SocketUtil/SocketUtil.h"
 #include "../../../../Functions/SocketAddress/SocketAddress.h"
 #include "../../../../Functions/CircularQueue/CircularQueue.h"
@@ -36,7 +37,7 @@ namespace PROTOCOL {
 		virtual bool Destroy() = 0;
 
 	public:
-		bool CopyReceiveBufferForIOCP(char* InBuffer, const uint16_t& Length);
+		bool CopyReceiveBufferForIOCP(char* InBuffer, uint16_t& Length);
 
 	public:
 		inline void SetProtocolType(const EPROTOCOLTYPE& NewType) { m_ProtocolType = NewType; }
@@ -77,6 +78,9 @@ namespace PROTOCOL {
 			std::thread m_ReliableThread;
 
 		private:
+			CSocketAddress m_LastRemoteAddress;
+
+		private:
 			HANDLE m_hWaitForInitialize;
 			HANDLE m_hWakeupThreadEvent;
 			HANDLE m_hSendCompleteEvent;
@@ -100,14 +104,17 @@ namespace PROTOCOL {
 			bool Destroy();
 
 		public:
-			bool InitializeReceiveFromForIOCP(CSocketAddress& ReceiveAddress, OVERLAPPED_EX& ReceiveOverlapped);
+			bool InitializeReceiveFromForIOCP(OVERLAPPED_EX& ReceiveOverlapped);
 
 		public:
-			bool ReceiveFromForEventSelect(char* InBuffer, CSocketAddress& ReceiveAddress, uint16_t& DataLength);
+			bool ReceiveFromForEventSelect(char* InBuffer, uint16_t& DataLength);
 
 		public:
 			bool WriteToQueue(const RELIABLE_DATA* const Data);
-			bool WriteTo(const CSocketAddress& SendAddress, const char* OutBuffer, const uint16_t& DataLength, OVERLAPPED_EX& SendOverlapped);
+			bool WriteTo(bool IsReliable, const CSocketAddress& SendAddress, const PACKET::PACKET_INFORMATION& PacketInfo, const char* OutBuffer, const uint16_t& DataLength, OVERLAPPED_EX& SendOverlapped);
+
+		public:
+			CSocketAddress GetLastRemoteAddress() const { return m_LastRemoteAddress; }
 
 		};
 	}
@@ -141,7 +148,7 @@ namespace PROTOCOL {
 			return false;
 		}
 
-		static bool CopyReceiveBuffer(PROTOCOL::CProtocol* const Socket, char* const DataBuffer, const uint16_t& CopyLength) {
+		static bool CopyReceiveBuffer(PROTOCOL::CProtocol* const Socket, char* const DataBuffer, uint16_t& CopyLength) {
 			if (Socket) {
 				return Socket->CopyReceiveBufferForIOCP(DataBuffer, CopyLength);
 			}
@@ -191,7 +198,7 @@ namespace PROTOCOL {
 		}
 
 		static bool Receive(PROTOCOL::TCPIP::CTCPIPSocket* const Socket, OVERLAPPED_EX* const Overlapped) {
-			if (Socket && Overlapped) {
+			if (Socket) {
 				return Socket->InitializeReceiveForIOCP(*Overlapped);
 			}
 			return false;
@@ -205,7 +212,7 @@ namespace PROTOCOL {
 		}
 
 		static bool Write(PROTOCOL::TCPIP::CTCPIPSocket* const Socket, const PACKET::PACKET_INFORMATION& PacketInfo, const char* const DataBuffer, const uint16_t& DataLength, OVERLAPPED_EX* const Overlapped) {
-			if (Socket && DataBuffer && Overlapped) {
+			if (Socket && DataBuffer) {
 				return Socket->Write(PacketInfo, DataBuffer, DataLength, *Overlapped);
 			}
 			return false;
@@ -213,16 +220,16 @@ namespace PROTOCOL {
 
 	public:
 		// UDP
-		static bool ReceiveFrom(PROTOCOL::UDPIP::CUDPIPSocket* const Socket, CSocketAddress& ReceiveAddress, OVERLAPPED_EX* const Overlapped) {
-			if (Socket && Overlapped) {
-				return Socket->InitializeReceiveFromForIOCP(ReceiveAddress, *Overlapped);
+		static bool ReceiveFrom(PROTOCOL::UDPIP::CUDPIPSocket* const Socket, OVERLAPPED_EX* const Overlapped) {
+			if (Socket) {
+				return Socket->InitializeReceiveFromForIOCP(*Overlapped);
 			}
 			return false;
 		}
 
-		static bool WriteTo(PROTOCOL::UDPIP::CUDPIPSocket* const Socket, const CSocketAddress& SendAddress, const char* const DataBuffer, const uint16_t& DataLength, OVERLAPPED_EX* const Overlapped) {
-			if (Socket && Overlapped) {
-				return Socket->WriteTo(SendAddress, DataBuffer, DataLength, *Overlapped);
+		static bool WriteTo(PROTOCOL::UDPIP::CUDPIPSocket* const Socket, bool IsReliable, const CSocketAddress& SendAddress, const PACKET::PACKET_INFORMATION& PacketInfo, const char* const DataBuffer, const uint16_t& DataLength, OVERLAPPED_EX* const Overlapped) {
+			if (Socket) {
+				return Socket->WriteTo(IsReliable, SendAddress, PacketInfo, DataBuffer, DataLength, *Overlapped);
 			}
 			return false;
 		}

@@ -25,7 +25,7 @@ public:
 	CNetworkSession();
 
 public:
-	virtual bool Initialize();
+	virtual bool Initialize(const EPROTOCOLTYPE& ProtocolType);
 	virtual bool Destroy();
 
 public:
