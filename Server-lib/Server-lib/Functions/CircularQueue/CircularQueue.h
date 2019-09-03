@@ -75,7 +75,7 @@ public:
 	CCircularQueue() : m_Head(0), m_Tail(0) { ZeroMemory(&m_Queue, MAX_QUEUE_LENGTH); }
 
 public:
-	const const QUEUEDATATYPE& const Push(const QUEUEDATATYPE& InData) {
+	const QUEUEDATATYPE& Push(const QUEUEDATATYPE& InData) {
 		CCriticalSectionGuard Lock(m_ListLock);
 
 		size_t TempTail = (m_Tail + 1) % MAX_QUEUE_LENGTH;

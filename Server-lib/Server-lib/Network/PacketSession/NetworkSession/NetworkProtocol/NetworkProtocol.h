@@ -24,6 +24,9 @@ namespace PROTOCOL {
 		EPROTOCOLTYPE m_ProtocolType;
 
 	protected:
+		bool CheckAck(uint16_t& Length);
+
+	protected:
 		inline void SetSocket(const SOCKET& NewSocket) { m_Socket = NewSocket; }
 
 	protected:
@@ -55,7 +58,7 @@ namespace PROTOCOL {
 
 		public:
 			virtual bool Initialize() override;
-			bool Listen(const CSocketAddress& BindAddress, const uint16_t& BackLogCount);
+			bool Listen(const CSocketAddress& BindAddress, const uint32_t& BackLogCount);
 			bool Connect(const CSocketAddress& ConnectionAddress);
 			bool Accept(const SOCKET& ListenSocket, OVERLAPPED_EX& AcceptOverlapped);
 			virtual bool Destroy() override;
@@ -129,7 +132,7 @@ namespace PROTOCOL {
 			return false;
 		}
 
-		static bool Bind(PROTOCOL::CProtocol* const Socket, const CSocketAddress& BindAddress, const uint16_t& BackLogCount = SOMAXCONN) {
+		static bool Bind(PROTOCOL::CProtocol* const Socket, const CSocketAddress& BindAddress, const uint32_t& BackLogCount = SOMAXCONN) {
 			if (Socket) {
 				switch (Socket->GetProtocolType()) {
 				case EPROTOCOLTYPE::EPT_TCP:
@@ -227,9 +230,16 @@ namespace PROTOCOL {
 			return false;
 		}
 
-		static bool WriteTo(PROTOCOL::UDPIP::CUDPIPSocket* const Socket, bool IsReliable, const CSocketAddress& SendAddress, const PACKET::PACKET_INFORMATION& PacketInfo, const char* const DataBuffer, const uint16_t& DataLength, OVERLAPPED_EX* const Overlapped) {
+		static bool ReceiveFromEventSelect(PROTOCOL::UDPIP::CUDPIPSocket* const Socket, char* const Buffer, uint16_t& RecvBytes) {
 			if (Socket) {
-				return Socket->WriteTo(IsReliable, SendAddress, PacketInfo, DataBuffer, DataLength, *Overlapped);
+				return Socket->ReceiveFromForEventSelect(Buffer, RecvBytes);
+			}
+			return false;
+		}
+
+		static bool WriteTo(PROTOCOL::UDPIP::CUDPIPSocket* const Socket, bool bUseAck, const CSocketAddress& SendAddress, const PACKET::PACKET_INFORMATION& PacketInfo, const char* const DataBuffer, const uint16_t& DataLength, OVERLAPPED_EX* const Overlapped) {
+			if (Socket) {
+				return Socket->WriteTo(bUseAck, SendAddress, PacketInfo, DataBuffer, DataLength, *Overlapped);
 			}
 			return false;
 		}

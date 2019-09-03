@@ -44,12 +44,23 @@ public:
 		m_CurrentReceiveBytes += RecvBytes;
 		return Succeed;
 	}
+	//inline bool CopyReceiveFromBuffer();
 
 	// EventSelect Only
 	inline bool ReceiveEventSelect() {
 		uint16_t RecvBytes = 0;
 		
 		if (CSocketSystem::ReceiveEventSelect(GetTCPSocket(), m_PacketBuffer, RecvBytes)) {
+			m_CurrentReceiveBytes += RecvBytes;
+
+			return true;
+		}
+		return false;
+	}
+	inline bool ReceiveFromEventSelect() {
+		uint16_t RecvBytes = 0;
+
+		if (CSocketSystem::ReceiveFromEventSelect(GetUDPSocket(), m_PacketBuffer, RecvBytes)) {
 			m_CurrentReceiveBytes += RecvBytes;
 
 			return true;

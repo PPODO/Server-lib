@@ -39,11 +39,11 @@ inline bool CIOCPTCP<SESSIONTYPE, MAX_CLIENT_COUNT>::Initialize() {
 			return false;
 		}
 
-		for (auto& Iterator : m_Clients) {
+		for (size_t i = 0; i < MAX_CLIENT_COUNT; i++) {
 			SESSIONTYPE* Client = new SESSIONTYPE;
 			if (CPacketSession * TempClient = reinterpret_cast<CPacketSession*>(Client)) {
 				if (TempClient->Initialize(EPROTOCOLTYPE::EPT_TCP) && CSocketSystem::Accept(TempClient->GetTCPSocket(), CSocketSystem::GetSocketByClass(TempSession->GetTCPSocket()), TempClient->GetOverlappedByIOType(EIOTYPE::EIOTYPE_ACCEPT))) {
-					Iterator = Client;
+					m_Clients.push_back(Client);
 				}
 				else {
 					CLog::WriteLog(L"Initialize IOCP : Failed To Create Client Socket!");
@@ -89,7 +89,7 @@ inline bool CIOCPTCP<SESSIONTYPE, MAX_CLIENT_COUNT>::OnIODisconnect(void* const 
 	if (CPacketSession * Client = reinterpret_cast<CPacketSession*>(Object)) {
 		Client->Destroy();
 
-		if (Client->Initialize() && CSocketSystem::Accept(Client->GetTCPSocket(), CSocketSystem::GetSocketByClass(GetListenSession<CPacketSession>()->GetTCPSocket()), Client->GetOverlappedByIOType(EIOTYPE::EIOTYPE_ACCEPT))) {
+		if (Client->Initialize(EPROTOCOLTYPE::EPT_TCP) && CSocketSystem::Accept(Client->GetTCPSocket(), CSocketSystem::GetSocketByClass(GetListenSession<CPacketSession>()->GetTCPSocket()), Client->GetOverlappedByIOType(EIOTYPE::EIOTYPE_ACCEPT))) {
 			CLog::WriteLog(L"On IO Disconnect : Client Disconnect Successful!");
 			return true;
 		}
@@ -100,7 +100,7 @@ inline bool CIOCPTCP<SESSIONTYPE, MAX_CLIENT_COUNT>::OnIODisconnect(void* const 
 }
 
 template<typename SESSIONTYPE, size_t MAX_CLIENT_COUNT>
-inline bool CIOCPTCP<SESSIONTYPE, MAX_CLIENT_COUNT>::OnIORead(void* const Object, const uint16_t& RecvBytes) {
+inline bool CIOCPTCP<SESSIONTYPE, MAX_CLIENT_COUNT>::OnIORead(void* const Object, uint16_t& RecvBytes) {
 	if (CPacketSession * Client = reinterpret_cast<CPacketSession*>(Object)) {
 		if (Client->CopyReceiveBuffer(Client->GetTCPSocket(), RecvBytes)) {
 			if (PACKET_DATA * NewPacketData = Client->PacketAnalysis()) {

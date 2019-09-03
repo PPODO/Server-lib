@@ -18,21 +18,26 @@ bool CProtocol::CopyReceiveBufferForIOCP(char* InBuffer, uint16_t& Length) {
 
 	CopyMemory(InBuffer, m_ReceiveBuffer, Length);
 
-	if (UDPIP::CUDPIPSocket* UDPSocket = reinterpret_cast<UDPIP::CUDPIPSocket*>(this)) {
-		int Ack = *reinterpret_cast<int*>(InBuffer);
+	CheckAck(Length);
+	return true;
+}
+
+bool CProtocol::CheckAck(uint16_t& Length) {
+	if (UDPIP::CUDPIPSocket * UDPSocket = reinterpret_cast<UDPIP::CUDPIPSocket*>(this)) {
+		int Ack = *reinterpret_cast<int*>(m_ReceiveBuffer);
 
 		if (Ack == 0) {
-			MoveMemory(InBuffer, InBuffer + sizeof(int), Length);
+			MoveMemory(m_ReceiveBuffer, m_ReceiveBuffer + sizeof(int), Length);
 			Length -= sizeof(int);
-			
+
 			CSocketSystem::WriteTo(UDPSocket, true, UDPSocket->GetLastRemoteAddress(), PACKET::PACKET_INFORMATION(), nullptr, 0, nullptr);
 		}
 		else if (Ack == 9999) {
-			ZeroMemory(InBuffer, Length);
+			CLog::WriteLog(L"Succeed!");
+			ZeroMemory(m_ReceiveBuffer, Length);
 			return false;
 		}
 	}
-	return true;
 }
 
 TCPIP::CTCPIPSocket::CTCPIPSocket() {
@@ -55,7 +60,7 @@ bool TCPIP::CTCPIPSocket::Initialize() {
 	return true;
 }
 
-bool TCPIP::CTCPIPSocket::Listen(const CSocketAddress& BindAddress, const uint16_t& BackLogCount) {
+bool TCPIP::CTCPIPSocket::Listen(const CSocketAddress& BindAddress, const uint32_t& BackLogCount) {
 	SOCKET Socket = GetSocket();
 	if (Socket == INVALID_SOCKET) {
 		CLog::WriteLog(L"Listen : Socket is Invalid!");
@@ -313,8 +318,7 @@ bool UDPIP::CUDPIPSocket::ReceiveFromForEventSelect(char* InBuffer, uint16_t& Da
 	}
 	DataLength = RecvBytes;
 
-
-	// Reliable
+	CheckAck(DataLength);
 	return true;
 }
 
@@ -349,7 +353,7 @@ bool UDPIP::CUDPIPSocket::WriteTo(bool IsReliable, const CSocketAddress& SendAdd
 	return true;
 }
 
-bool PROTOCOL::UDPIP::CUDPIPSocket::WriteToQueue(const RELIABLE_DATA* const Data) {
+bool UDPIP::CUDPIPSocket::WriteToQueue(const RELIABLE_DATA* const Data) {
 	if (Data && m_ReliableQueue.Push(const_cast<RELIABLE_DATA * const&>(Data))) {
 		if (!m_bIsReliableSending) {
 			return SetEvent(m_hWakeupThreadEvent);
