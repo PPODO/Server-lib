@@ -54,7 +54,7 @@ public:
 
 public:
 	RELIABLE_DATA() { ZeroMemory(&m_DataBuffer, MAX_RECEIVE_BUFFER_LENGTH); }
-	RELIABLE_DATA(const void* Owner, CSocketAddress& RemoteAddress, const PACKET::PACKET_INFORMATION& Info, const char* const DataBuffer, const uint16_t& BufferLength) : BASE_QUEUE_DATA(Owner, nullptr), m_RemoteAddress(RemoteAddress), m_PacketInformation(Info), m_DataSize(BufferLength) {
+	RELIABLE_DATA(const void* Owner, const CSocketAddress& RemoteAddress, const PACKET::PACKET_INFORMATION& Info, const char* const DataBuffer, const uint16_t& BufferLength) : BASE_QUEUE_DATA(Owner, nullptr), m_RemoteAddress(RemoteAddress), m_PacketInformation(Info), m_DataSize(BufferLength) {
 		CopyMemory(m_DataBuffer, DataBuffer, BufferLength);
 	}
 

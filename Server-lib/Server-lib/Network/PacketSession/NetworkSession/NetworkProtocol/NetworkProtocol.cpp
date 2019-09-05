@@ -10,7 +10,7 @@ CProtocol::CProtocol() : m_Socket(INVALID_SOCKET), m_ProtocolType(EPROTOCOLTYPE:
 	ZeroMemory(m_ReceiveBuffer, MAX_RECEIVE_BUFFER_LENGTH);
 }
 
-bool CProtocol::CopyReceiveBufferForIOCP(char* InBuffer, uint16_t& Length) {
+bool CProtocol::CopyReceiveBuffer(char* InBuffer, uint16_t& Length) {
 	if (!InBuffer || Length <= 0) {
 		CLog::WriteLog(L"Copy Receive Buffer For IOCP : InBuffer is nullptr or Buffer Length is less than zero!");
 		return false;
@@ -18,35 +18,15 @@ bool CProtocol::CopyReceiveBufferForIOCP(char* InBuffer, uint16_t& Length) {
 
 	bool Result = true;
 	if (m_ProtocolType == EPROTOCOLTYPE::EPT_UDP) {
-		Result = CheckAck(Length);
+		if (UDPIP::CUDPIPSocket * UDPSocket = reinterpret_cast<UDPIP::CUDPIPSocket*>(this)) {
+			Result = UDPSocket->CheckAck(Length);
+		}
 	}
 
 	CopyMemory(InBuffer, m_ReceiveBuffer, Length);
 	ZeroMemory(m_ReceiveBuffer, Length);
 
 	return Result;
-}
-
-bool CProtocol::CheckAck(uint16_t& Length) {
-	if (UDPIP::CUDPIPSocket * UDPSocket = reinterpret_cast<UDPIP::CUDPIPSocket*>(this)) {
-		CCriticalSectionGuard Lock(m_AckProcessLocking);
-
-		int Ack = *reinterpret_cast<int*>(m_ReceiveBuffer);
-
-		if (Ack == 0) {
-			MoveMemory(m_ReceiveBuffer, m_ReceiveBuffer + sizeof(int), Length);
-			Length -= sizeof(int);
-
-			CSocketSystem::WriteTo(UDPSocket, true, UDPSocket->GetLastRemoteAddress(), PACKET::PACKET_INFORMATION(), nullptr, 0, nullptr);
-
-			return true;
-		}
-		else if (Ack == 9999) {
-			MoveMemory(m_ReceiveBuffer, m_ReceiveBuffer + sizeof(int), Length);
-			return false;
-		}
-	}
-	return false;
 }
 
 TCPIP::CTCPIPSocket::CTCPIPSocket() {
@@ -225,33 +205,33 @@ UDPIP::CUDPIPSocket::CUDPIPSocket() : m_hWakeupThreadEvent(INVALID_HANDLE_VALUE)
 bool UDPIP::CUDPIPSocket::Initialize() {
 	SOCKET Socket = INVALID_SOCKET;
 	if (Socket != INVALID_SOCKET) {
-		CLog::WriteLog(L"");
+		CLog::WriteLog(L"Initialize UDP Socket : UDP Socket Already Initialized!");
 		return false;
 	}
 
 	if ((Socket = CSocketUtil::CreateSocket(false)) == INVALID_SOCKET) {
-		CLog::WriteLog(L"");
+		CLog::WriteLog(L"Initialize UDP Socket : Failed To Create UDP Socket!");
 		return false;
 	}
 	SetSocket(Socket);
 
 	if (!(m_hWakeupThreadEvent = CreateEvent(nullptr, false, false, nullptr))) {
-		CLog::WriteLog(L"");
+		CLog::WriteLog(L"Initialize UDP Socket : Failed To Create Wake Up Thread Event!");
 		return false;
 	}
 
 	if (!(m_hSendCompleteEvent = CreateEvent(nullptr, false, false, nullptr))) {
-		CLog::WriteLog(L"");
-		return false;
-	}
-
-	if (!(m_hWaitForInitialize = CreateEvent(nullptr, false, false, nullptr))) {
-		CLog::WriteLog(L"");
+		CLog::WriteLog(L"Initialize UDP Socket : Failed To Create Send Complete Event!");
 		return false;
 	}
 
 	if (!(m_hStop = CreateEvent(nullptr, false, false, nullptr))) {
-		CLog::WriteLog(L"");
+		CLog::WriteLog(L"Initialize UDP Socket : Failed To Create Stop Thread Event!");
+		return false;
+	}
+
+	if (!(m_hWaitForInitialize = CreateEvent(nullptr, false, false, nullptr))) {
+		CLog::WriteLog(L"Initialize UDP Socket : Failed To Create Wait For Initialize Event!");
 		return false;
 	}
 
@@ -281,14 +261,14 @@ bool UDPIP::CUDPIPSocket::Destroy() {
 		m_ReliableThread.join();
 	}
 
-	if (m_hStop) {
-		CloseHandle(m_hStop);
-		m_hStop = INVALID_HANDLE_VALUE;
-	}
-
 	if (m_hWaitForInitialize) {
 		CloseHandle(m_hWaitForInitialize);
 		m_hWaitForInitialize = INVALID_HANDLE_VALUE;
+	}
+
+	if (m_hStop) {
+		CloseHandle(m_hStop);
+		m_hStop = INVALID_HANDLE_VALUE;
 	}
 
 	if (m_hSendCompleteEvent) {
@@ -324,20 +304,20 @@ bool UDPIP::CUDPIPSocket::InitializeReceiveFromForIOCP(OVERLAPPED_EX& ReceiveOve
 bool UDPIP::CUDPIPSocket::ReceiveFromForEventSelect(char* InBuffer, uint16_t& DataLength) {
 	DWORD RecvBytes = 0, Flags = 0;
 	WSABUF ReceiveBuffer;
-	ReceiveBuffer.buf = InBuffer;
+	ReceiveBuffer.buf = GetReceiveBuffer();
 	ReceiveBuffer.len = MAX_RECEIVE_BUFFER_LENGTH;
 
 	CSocketAddress ReceiveAddress;
 	int AddressLen = CSocketAddress::GetSize();
 	if (WSARecvFrom(GetSocket(), &ReceiveBuffer, 1, &RecvBytes, &Flags, reinterpret_cast<sockaddr*>(&m_LastRemoteAddress), &AddressLen, nullptr, nullptr) == SOCKET_ERROR) {
 		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {
+			CLog::WriteLog(L"WSA Recv From : Failed To Recv! - %d", WSAGetLastError());
 			return false;
 		}
 	}
 	DataLength = RecvBytes;
 
-	CheckAck(DataLength);
-	return true;
+	return CopyReceiveBuffer(InBuffer, DataLength);
 }
 
 bool UDPIP::CUDPIPSocket::WriteTo(bool IsReliable, const CSocketAddress& SendAddress, const PACKET::PACKET_INFORMATION& PacketInfo, const char* OutBuffer, const uint16_t& DataLength, OVERLAPPED_EX& SendOverlapped) {
@@ -397,18 +377,9 @@ bool UDPIP::CUDPIPSocket::ProcessReliable() {
 			while (!m_ReliableQueue.IsEmpty()) {
 				if (m_ReliableQueue.Pop(ReliableData) && ReliableData) {
 					CNetworkSession* Owner = reinterpret_cast<CNetworkSession*>(ReliableData->m_Owner);
-					// for(){}
-					if (!Owner || !WriteTo(false, ReliableData->m_RemoteAddress, ReliableData->m_PacketInformation, ReliableData->m_DataBuffer, ReliableData->m_DataSize, *Owner->GetOverlappedByIOType(EIOTYPE::EIOTYPE_WRITE))) {
-						break;
-					}
-
-					DWORD Result = WaitForSingleObject(m_hSendCompleteEvent, 10);
-
-					if (Result == WAIT_OBJECT_0) {
-						break;
-					}
-					else {
-						continue;
+					
+					if (!ReliableSend(ReliableData, *Owner->GetOverlappedByIOType(EIOTYPE::EIOTYPE_WRITE))) {
+						CLog::WriteLog(L"Relible UDP : Packet Drop!");
 					}
 				}
 				else {
@@ -420,4 +391,26 @@ bool UDPIP::CUDPIPSocket::ProcessReliable() {
 		}
 	}
 	return true;
+}
+
+bool UDPIP::CUDPIPSocket::CheckAck(uint16_t& Length) {
+	CCriticalSectionGuard Lock(m_AckProcessLocking);
+
+	char* const TempReceiveBuffer = GetReceiveBuffer();
+	int Ack = *reinterpret_cast<int*>(TempReceiveBuffer);
+
+	if (Ack == 0) {
+		MoveMemory(TempReceiveBuffer, TempReceiveBuffer + sizeof(int), Length);
+		Length -= sizeof(int);
+
+		CSocketSystem::WriteTo(this, true, m_LastRemoteAddress, PACKET::PACKET_INFORMATION(), nullptr, 0, nullptr);
+
+		return true;
+	}
+	else if (Ack == 9999) {
+		SetEvent(m_hSendCompleteEvent);
+		MoveMemory(TempReceiveBuffer, TempReceiveBuffer + sizeof(int), Length);
+		return false;
+	}
+	return false;
 }

@@ -23,12 +23,6 @@ namespace PROTOCOL {
 		SOCKET m_Socket;
 		EPROTOCOLTYPE m_ProtocolType;
 
-	private:
-		CCriticalSection m_AckProcessLocking;
-
-	protected:
-		bool CheckAck(uint16_t& Length);
-
 	protected:
 		inline void SetSocket(const SOCKET& NewSocket) { m_Socket = NewSocket; }
 
@@ -43,7 +37,7 @@ namespace PROTOCOL {
 		virtual bool Destroy() = 0;
 
 	public:
-		bool CopyReceiveBufferForIOCP(char* InBuffer, uint16_t& Length);
+		bool CopyReceiveBuffer(char* InBuffer, uint16_t& Length);
 
 	public:
 		inline void SetProtocolType(const EPROTOCOLTYPE& NewType) { m_ProtocolType = NewType; }
@@ -80,6 +74,7 @@ namespace PROTOCOL {
 
 	namespace UDPIP {
 		class CUDPIPSocket : public CProtocol {
+			const size_t PACKET_DROP_MAX_COUNT = 50;
 		private:
 			std::thread m_ReliableThread;
 
@@ -99,7 +94,30 @@ namespace PROTOCOL {
 			CCircularQueue<RELIABLE_DATA*> m_ReliableQueue;
 
 		private:
+			CCriticalSection m_AckProcessLocking;
+
+		private:
 			bool ProcessReliable();
+			
+		private:
+			inline bool ReliableSend(const RELIABLE_DATA* const ReliableData, OVERLAPPED_EX& SendOverlapped) {
+				for (size_t i = 0; i < PACKET_DROP_MAX_COUNT; i++) {
+					std::cout << "Try Send!\n";
+					if (!WriteTo(false, ReliableData->m_RemoteAddress, ReliableData->m_PacketInformation, ReliableData->m_DataBuffer, ReliableData->m_DataSize, SendOverlapped)) {
+						return false;
+					}
+
+					DWORD Result = WaitForSingleObject(m_hSendCompleteEvent, 10);
+
+					if (Result == WAIT_OBJECT_0) {
+						return true;
+					}
+					else {
+						continue;
+					}
+				}
+				return false;
+			}
 
 		public:
 			CUDPIPSocket();
@@ -108,6 +126,7 @@ namespace PROTOCOL {
 			bool Initialize();
 			bool Bind(const CSocketAddress& Address);
 			bool Destroy();
+			bool CheckAck(uint16_t& Length);
 
 		public:
 			bool InitializeReceiveFromForIOCP(OVERLAPPED_EX& ReceiveOverlapped);
@@ -156,7 +175,7 @@ namespace PROTOCOL {
 
 		static bool CopyReceiveBuffer(PROTOCOL::CProtocol* const Socket, char* const DataBuffer, uint16_t& CopyLength) {
 			if (Socket) {
-				return Socket->CopyReceiveBufferForIOCP(DataBuffer, CopyLength);
+				return Socket->CopyReceiveBuffer(DataBuffer, CopyLength);
 			}
 			return false;
 		}

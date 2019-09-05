@@ -33,11 +33,12 @@ public:
 
 public:
 	PACKET_DATA* PacketAnalysis();
+
+public:
 	bool Write(const PACKET_INFORMATION& PacketInfo, const char* const DataBuffer, const uint16_t& DataLength);
 	bool WriteCompletion();
 
 public:
-	// IOCP Only
 	inline bool CopyReceiveBuffer(PROTOCOL::CProtocol* const Socket, uint16_t& RecvBytes) {
 		if (RecvBytes <= 0) {
 			return false;
@@ -50,7 +51,6 @@ public:
 		}
 		return false;
 	}
-	//inline bool CopyReceiveFromBuffer();
 
 	// EventSelect Only
 	inline bool ReceiveEventSelect() {
