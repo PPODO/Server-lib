@@ -71,5 +71,6 @@ public:
 public:
 	virtual bool Initialize();
 	virtual bool Destroy();
+	virtual bool UpdateMainThread();
 
 };

@@ -19,7 +19,7 @@ bool CPacketSession::Destroy() {
 }
 
 PACKET_DATA* CPacketSession::PacketAnalysis() {
-	// Lock
+	CCriticalSectionGuard Lock(m_PacketAnalysisLocking);
 
 	while (m_CurrentReceiveBytes > 0) {
 		if (m_PacketInformation.m_PacketSize == 0 && m_CurrentReceiveBytes >= PACKET_INFORMATION::GetSize()) {
@@ -50,7 +50,6 @@ PACKET_DATA* CPacketSession::PacketAnalysis() {
 			}
 			return nullptr;
 		}
-
 	}
 	return nullptr;
 }

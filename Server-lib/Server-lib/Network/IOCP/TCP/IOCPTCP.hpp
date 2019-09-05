@@ -96,7 +96,6 @@ inline bool CIOCPTCP<SESSIONTYPE, MAX_CLIENT_COUNT>::OnIODisconnect(void* const 
 	}
 	CLog::WriteLog(L"On IO Disconnect : Failed To Disconnect Client!");
 	return false;
-	return false;
 }
 
 template<typename SESSIONTYPE, size_t MAX_CLIENT_COUNT>

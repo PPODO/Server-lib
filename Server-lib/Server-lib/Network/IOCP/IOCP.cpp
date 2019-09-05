@@ -53,6 +53,10 @@ bool CIOCP::Destroy() {
 	return true;
 }
 
+bool CIOCP::UpdateMainThread() {
+	return ProcessPacketThread();
+}
+
 bool CIOCP::CreateWorkerThread() {
 	SYSTEM_INFO SysInfo;
 	GetSystemInfo(&SysInfo);

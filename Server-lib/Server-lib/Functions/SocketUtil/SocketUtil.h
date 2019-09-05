@@ -1,7 +1,7 @@
 #pragma once
 #include "../SocketAddress/SocketAddress.h"
 
-const size_t MAX_RECEIVE_BUFFER_LENGTH = 1024;
+const size_t MAX_RECEIVE_BUFFER_LENGTH = 4096;
 
 enum class EIOTYPE : UCHAR {
 	EIOTYPE_NONE,

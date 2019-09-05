@@ -16,14 +16,21 @@ bool CProtocol::CopyReceiveBufferForIOCP(char* InBuffer, uint16_t& Length) {
 		return false;
 	}
 
-	CopyMemory(InBuffer, m_ReceiveBuffer, Length);
+	bool Result = true;
+	if (m_ProtocolType == EPROTOCOLTYPE::EPT_UDP) {
+		Result = CheckAck(Length);
+	}
 
-	CheckAck(Length);
-	return true;
+	CopyMemory(InBuffer, m_ReceiveBuffer, Length);
+	ZeroMemory(m_ReceiveBuffer, Length);
+
+	return Result;
 }
 
 bool CProtocol::CheckAck(uint16_t& Length) {
 	if (UDPIP::CUDPIPSocket * UDPSocket = reinterpret_cast<UDPIP::CUDPIPSocket*>(this)) {
+		CCriticalSectionGuard Lock(m_AckProcessLocking);
+
 		int Ack = *reinterpret_cast<int*>(m_ReceiveBuffer);
 
 		if (Ack == 0) {
@@ -31,13 +38,15 @@ bool CProtocol::CheckAck(uint16_t& Length) {
 			Length -= sizeof(int);
 
 			CSocketSystem::WriteTo(UDPSocket, true, UDPSocket->GetLastRemoteAddress(), PACKET::PACKET_INFORMATION(), nullptr, 0, nullptr);
+
+			return true;
 		}
 		else if (Ack == 9999) {
-			CLog::WriteLog(L"Succeed!");
-			ZeroMemory(m_ReceiveBuffer, Length);
+			MoveMemory(m_ReceiveBuffer, m_ReceiveBuffer + sizeof(int), Length);
 			return false;
 		}
 	}
+	return false;
 }
 
 TCPIP::CTCPIPSocket::CTCPIPSocket() {
@@ -53,6 +62,13 @@ bool TCPIP::CTCPIPSocket::Initialize() {
 
 	if ((Socket = CSocketUtil::CreateSocket(true)) == INVALID_SOCKET) {
 		CLog::WriteLog(L"Initialize TCP Socket : Failed To Create TCP Socket!");
+		return false;
+	}
+	LINGER OptionValue;
+	OptionValue.l_onoff = 1;
+	OptionValue.l_linger = 10;
+	if (setsockopt(Socket, SOL_SOCKET, SO_LINGER, reinterpret_cast<const char*>(&OptionValue), sizeof(LINGER)) == SOCKET_ERROR) {
+		CLog::WriteLog(L"Initialize TCP Socket : Failed To Set Linger Option");
 		return false;
 	}
 	SetSocket(Socket);
@@ -245,7 +261,7 @@ bool UDPIP::CUDPIPSocket::Initialize() {
 	return true;
 }
 
-bool PROTOCOL::UDPIP::CUDPIPSocket::Bind(const CSocketAddress& Address) {
+bool UDPIP::CUDPIPSocket::Bind(const CSocketAddress& Address) {
 	if (GetSocket() == INVALID_SOCKET) {
 		CLog::WriteLog(L"Bind : Socket is Invalid!");
 		return false;
@@ -288,11 +304,13 @@ bool UDPIP::CUDPIPSocket::Destroy() {
 }
 
 bool UDPIP::CUDPIPSocket::InitializeReceiveFromForIOCP(OVERLAPPED_EX& ReceiveOverlapped) {
+	ZeroMemory(&ReceiveOverlapped.m_Overlapped, sizeof(WSAOVERLAPPED));
+
 	DWORD RecvBytes = 0, Flags = 0;
 	WSABUF ReceiveBuffer;
 	ReceiveBuffer.buf = GetReceiveBuffer();
 	ReceiveBuffer.len = MAX_RECEIVE_BUFFER_LENGTH;
-
+	
 	int AddressLen = CSocketAddress::GetSize();
 	if (WSARecvFrom(GetSocket(), &ReceiveBuffer, 1, &RecvBytes, &Flags, reinterpret_cast<sockaddr*>(&m_LastRemoteAddress), &AddressLen, &ReceiveOverlapped.m_Overlapped, nullptr) == SOCKET_ERROR) {
 		if (WSAGetLastError() != WSA_IO_PENDING && WSAGetLastError() != WSAEWOULDBLOCK) {

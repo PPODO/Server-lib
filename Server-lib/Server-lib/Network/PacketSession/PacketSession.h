@@ -18,6 +18,9 @@ private:
 	uint16_t m_CurrentReceiveBytes;
 	uint16_t m_LastReceivedPacketNumber;
 
+private:
+	CCriticalSection m_PacketAnalysisLocking;
+
 protected:
 	virtual DETAIL::CBasePacket* GetPacketObjectByInformation(const PACKET_INFORMATION& PacketInfo, const char* PacketBuffer) = 0;
 
@@ -40,9 +43,12 @@ public:
 			return false;
 		}
 
-		bool Succeed = CSocketSystem::CopyReceiveBuffer(Socket, m_PacketBuffer + m_CurrentReceiveBytes, RecvBytes);
-		m_CurrentReceiveBytes += RecvBytes;
-		return Succeed;
+		if (bool Succeed = CSocketSystem::CopyReceiveBuffer(Socket, m_PacketBuffer + m_CurrentReceiveBytes, RecvBytes)) {
+			m_CurrentReceiveBytes += RecvBytes;
+
+			return Succeed;
+		}
+		return false;
 	}
 	//inline bool CopyReceiveFromBuffer();
 

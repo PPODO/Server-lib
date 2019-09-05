@@ -23,6 +23,9 @@ namespace PROTOCOL {
 		SOCKET m_Socket;
 		EPROTOCOLTYPE m_ProtocolType;
 
+	private:
+		CCriticalSection m_AckProcessLocking;
+
 	protected:
 		bool CheckAck(uint16_t& Length);
 
