@@ -1,5 +1,6 @@
 #pragma once
 #include "../PacketSession/PacketSession.h"
+#include "../../Functions/CircularQueue/CircularQueue.h"
 #include <thread>
 
 class CEventSelect {
@@ -19,7 +20,20 @@ private:
 	HANDLE m_hStopEvent;
 
 private:
+	CCircularQueue<PACKET_DATA*> m_PacketQueue;
+
+private:
 	bool ProcessEventSelect();
+	bool ProcessPacketThread();
+
+protected:
+	inline bool AddNewDataAtPacketQueue(PACKET_DATA* const NewPacketData) {
+		if (NewPacketData) {
+			m_PacketQueue.Push(NewPacketData);
+			return true;
+		}
+		return false;
+	}
 
 protected:
 	//virtual bool OnIOAccept();
@@ -27,6 +41,7 @@ protected:
 	//virtual bool OnIODisconnect();
 	virtual bool OnIORead() = 0;
 	//virtual bool OnIOWrite();
+	virtual bool ProcessPacket(PACKET_DATA& PacketData) = 0;
 
 protected:
 	template<typename SESSIONTYPE>
@@ -39,6 +54,10 @@ public:
 			throw "";
 		}
 	};
+
+	virtual ~CEventSelect() {
+
+	}
 
 public:
 	inline bool Write(const PACKET::PACKET_INFORMATION& Info, const char* const DataBuffer, const uint16_t& DataLength) {
@@ -55,6 +74,7 @@ public:
 public:
 	virtual bool Initialize(const CSocketAddress& ConnectionAddress, const EPROTOCOLTYPE& ProtocolType);
 	virtual bool Destroy();
+	virtual bool UpdateMainThread();
 
 public:
 	template<typename SESSIONTYPE>

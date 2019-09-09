@@ -3,6 +3,7 @@
 #include "../MemoryPool/MemoryPool.h"
 #include "../SocketUtil/SocketUtil.h"
 #include "../BasePacket/BasePacket.h"
+#include <list>
 
 static const size_t MAX_QUEUE_LENGTH = 256;
 
@@ -32,6 +33,20 @@ public:
 			CopyMemory(m_DataBuffer, DataBuffer, DataSize);
 		}
 	}
+
+};
+
+template<typename LISTTYPE>
+struct BROADCAST_DATA : public BASE_QUEUE_DATA<BROADCAST_DATA<LISTTYPE>> {
+public:
+	bool m_bIsBroadCast;
+	const BUFFER_DATA* const m_BroadCastData;
+	const BUFFER_DATA* const m_OwnerData;
+	std::list<LISTTYPE*> m_BroadCastList;
+
+public:
+	BROADCAST_DATA() : m_BroadCastData(nullptr), m_BroadCastList(nullptr) {}
+	BROADCAST_DATA(const void* const Owner, const bool& bIsBroadCast, const BUFFER_DATA* const BroadCastData, const BUFFER_DATA* const OwnerData) : BASE_QUEUE_DATA<BROADCAST_DATA<LISTTYPE>>(Owner, nullptr), m_bIsBroadCast(bIsBroadCast), m_BroadCastData(BroadCastData), m_OwnerData(OwnerData) {}
 
 };
 

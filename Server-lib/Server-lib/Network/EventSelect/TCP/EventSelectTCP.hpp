@@ -36,7 +36,7 @@ inline bool CEventSelectTCP<SESSIONTYPE>::OnIORead() {
 	if (CPacketSession * TempSession = GetSessionSocket<CPacketSession>()) {
 		if (TempSession->ReceiveEventSelect()) {
 			if (PACKET_DATA * NewPacketData = TempSession->PacketAnalysis()) {
-
+				AddNewDataAtPacketQueue(NewPacketData);
 				return true;
 			}
 		}

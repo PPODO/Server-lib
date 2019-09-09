@@ -1,4 +1,5 @@
 #include "NetworkProtocol.h"
+#include "../../../../Functions/BasePacket/BasePacket.h"
 #include "../../NetworkSession/NetworkSession.h"
 #include <MSWSock.h>
 #include <utility>

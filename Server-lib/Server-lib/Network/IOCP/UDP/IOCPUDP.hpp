@@ -1,8 +1,8 @@
 #pragma once
-#include "../IOCP.h"
+#include "../IOCP.hpp"
 
 template<typename SESSIONTYPE>
-class CIOCPUDP : public CIOCP {
+class CIOCPUDP : public CIOCP<SESSIONTYPE> {
 private:
 
 protected:
@@ -19,21 +19,15 @@ public:
 
 template<typename SESSIONTYPE>
 inline bool CIOCPUDP<SESSIONTYPE>::Initialize() {
-	if (!std::is_base_of<CNetworkSession, SESSIONTYPE>()) {
-		CLog::WriteLog(L"Initialize IOCP : Only Classes That Inherit Sessions Are Supported!");
-		return false;
-	}
-
-	if (!CIOCP::Initialize()) {
+	if (!CIOCP<SESSIONTYPE>::Initialize()) {
 		CLog::WriteLog(L"Initialize IOCP : Failed To Initialization IOCP!");
 		return false;
 	}
 
-	SetListenSesisonObject(new SESSIONTYPE);
-	if (CPacketSession* TempSession = GetListenSession<CPacketSession>()) {
+	if (CPacketSession* TempSession = this->GetListenSession<CPacketSession>()) {
 		CSocketAddress BindAddress("127.0.0.1", 3550);
 
-		if (!TempSession->Initialize(EPROTOCOLTYPE::EPT_UDP) || !CSocketSystem::Bind(TempSession->GetUDPSocket(), BindAddress) || !RegisterIOCompletionPort(CSocketSystem::GetSocketByClass(TempSession->GetUDPSocket()), reinterpret_cast<ULONG_PTR&>(*GetListenSession<SESSIONTYPE>()))) {
+		if (!TempSession->Initialize(EPROTOCOLTYPE::EPT_UDP) || !CSocketSystem::Bind(TempSession->GetUDPSocket(), BindAddress) || !this->RegisterIOCompletionPort(CSocketSystem::GetSocketByClass(TempSession->GetUDPSocket()), reinterpret_cast<ULONG_PTR&>(*this->GetListenSession<SESSIONTYPE>()))) {
 			CLog::WriteLog(L"Initialize IOCP : Failed To Create Listen Socket!");
 			return false;
 		}
@@ -44,7 +38,7 @@ inline bool CIOCPUDP<SESSIONTYPE>::Initialize() {
 
 template<typename SESSIONTYPE>
 inline bool CIOCPUDP<SESSIONTYPE>::Destroy() {
-	return CIOCP::Destroy();
+	return CIOCP<SESSIONTYPE>::Destroy();
 }
 
 template<typename SESSIONTYPE>
@@ -62,7 +56,7 @@ inline bool CIOCPUDP<SESSIONTYPE>::OnIORead(void* const Object, uint16_t& RecvBy
 	if (CPacketSession * Client = reinterpret_cast<CPacketSession*>(Object)) {
 		if (Client->CopyReceiveBuffer(Client->GetUDPSocket(), RecvBytes)) {
 			if (PACKET_DATA * NewPacketData = Client->PacketAnalysis()) {
-				AddNewPacketAtQueue(NewPacketData);
+				this->AddNewDataAtPacketQueue(NewPacketData);
 			}
 		}
 		return CSocketSystem::ReceiveFrom(Client->GetUDPSocket(), Client->GetOverlappedByIOType(EIOTYPE::EIOTYPE_READ));
@@ -71,5 +65,5 @@ inline bool CIOCPUDP<SESSIONTYPE>::OnIORead(void* const Object, uint16_t& RecvBy
 
 template<typename SESSIONTYPE>
 inline bool CIOCPUDP<SESSIONTYPE>::OnIOWrite(void* const Object) {
-	return CIOCP::OnIOWrite(Object);
+	return CIOCP<SESSIONTYPE>::OnIOWrite(Object);
 }

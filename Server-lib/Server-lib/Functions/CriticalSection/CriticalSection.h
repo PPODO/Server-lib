@@ -7,9 +7,7 @@ private:
 
 public:
 	CCriticalSection() {
-		if (!InitializeCriticalSectionAndSpinCount(&m_CriticalSection, 2000)) {
-			std::cout << "Failed To Init Critical Section\n";
-		}
+		InitializeCriticalSection(&m_CriticalSection);
 	}
 
 	~CCriticalSection() {

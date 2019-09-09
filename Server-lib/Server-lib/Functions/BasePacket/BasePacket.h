@@ -13,9 +13,29 @@
 #include <sstream>
 
 namespace PACKET {
+	struct Vector{
+		friend boost::serialization::access;
+	public:
+		float X, Y, Z;
+
+	protected:
+		template<typename Archive>
+		void serialize(Archive& ar, unsigned int Version) {
+			ar& X;
+			ar& Y;
+			ar& Z;
+		}
+
+	public:
+		Vector() : X(0.f), Y(0.f), Z(0.f) {}
+		Vector(float x, float y, float z) : X(x), Y(y), Z(z) {};
+
+	};
+
 	class CPacketSystem;
 
 	namespace DETAIL {
+		#pragma pack(push, 8)
 		class CBasePacket {
 			friend CPacketSystem;
 		protected:
@@ -41,6 +61,7 @@ namespace PACKET {
 		};
 
 	}
+	#pragma pack(pop)
 
 	typedef struct PACKET_INFORMATION {
 	public:
@@ -56,6 +77,7 @@ namespace PACKET {
 
 	};
 
+	#pragma pack(push, 8)
 	template<typename T, size_t PoolSize>
 	class CPacket : public DETAIL::CBasePacket, public CMemoryPool<T, PoolSize> {
 		friend boost::serialization::access;
@@ -69,6 +91,7 @@ namespace PACKET {
 		}
 
 	};
+	#pragma pack(pop)
 
 	class CPacketSystem {
 	public:

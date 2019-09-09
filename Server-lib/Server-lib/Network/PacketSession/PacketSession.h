@@ -36,6 +36,7 @@ public:
 
 public:
 	bool Write(const PACKET_INFORMATION& PacketInfo, const char* const DataBuffer, const uint16_t& DataLength);
+	bool Write(const BUFFER_DATA* const SendData);
 	bool WriteCompletion();
 
 public:

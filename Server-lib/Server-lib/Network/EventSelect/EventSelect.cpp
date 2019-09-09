@@ -94,12 +94,27 @@ bool CEventSelect::ProcessEventSelect() {
 				// 사용하지 않음
 				//OnIOWrite();
 			}
-			else {
+			else if(!(Events.lNetworkEvents & 0x00)) {
 				CLog::WriteLog(L"Select Event : Unknown Network Event!");
 			}
 			break;
 		default:
 			break;
+		}
+	}
+	return true;
+}
+
+bool CEventSelect::UpdateMainThread() {
+	ProcessPacketThread();
+	return true;
+}
+
+bool CEventSelect::ProcessPacketThread() {
+	while (!m_PacketQueue.IsEmpty()) {
+		PACKET_DATA* Data = nullptr;
+		if (m_PacketQueue.Pop(Data) && Data) {
+			ProcessPacket(*Data);
 		}
 	}
 	return true;

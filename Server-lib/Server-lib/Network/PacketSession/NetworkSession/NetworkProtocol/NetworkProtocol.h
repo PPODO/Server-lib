@@ -4,9 +4,13 @@
 #include "../../../../Functions/SocketUtil/SocketUtil.h"
 #include "../../../../Functions/SocketAddress/SocketAddress.h"
 #include "../../../../Functions/CircularQueue/CircularQueue.h"
-#include "../../../../Functions/BasePacket/BasePacket.h"
 
 struct OVERLAPPED_EX;
+struct RELIABLE_DATA;
+struct BUFFER_DATA;
+namespace PACKET {
+	struct PACKET_INFORMATION;
+}
 
 namespace PROTOCOL {
 	enum class EPROTOCOLTYPE {
@@ -239,6 +243,13 @@ namespace PROTOCOL {
 		static bool Write(PROTOCOL::TCPIP::CTCPIPSocket* const Socket, const PACKET::PACKET_INFORMATION& PacketInfo, const char* const DataBuffer, const uint16_t& DataLength, OVERLAPPED_EX* const Overlapped) {
 			if (Socket && DataBuffer) {
 				return Socket->Write(PacketInfo, DataBuffer, DataLength, *Overlapped);
+			}
+			return false;
+		}
+
+		static bool Write(PROTOCOL::TCPIP::CTCPIPSocket* const Socket, const BUFFER_DATA* const BufferData, OVERLAPPED_EX* const Overlapped) {
+			if (Socket && BufferData) {
+				return Socket->Write(BufferData->m_PacketInformation, BufferData->m_DataBuffer, BufferData->m_DataSize, *Overlapped);
 			}
 			return false;
 		}

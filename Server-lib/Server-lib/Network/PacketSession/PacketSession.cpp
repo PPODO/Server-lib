@@ -60,8 +60,15 @@ bool CPacketSession::Write(const PACKET_INFORMATION& PacketInfo, const char* con
 		if (Data) {
 			m_WriteQueue.Push(Data);
 
-			return CSocketSystem::Write(GetTCPSocket(), Data->m_PacketInformation, Data->m_DataBuffer, Data->m_DataSize, GetOverlappedByIOType(EIOTYPE::EIOTYPE_WRITE));
+			return CSocketSystem::Write(GetTCPSocket(), Data, GetOverlappedByIOType(EIOTYPE::EIOTYPE_WRITE));
 		}
+	}
+	return false;
+}
+
+bool CPacketSession::Write(const BUFFER_DATA* const SendData) {
+	if (SendData) {
+		return CSocketSystem::Write(GetTCPSocket(), SendData, GetOverlappedByIOType(EIOTYPE::EIOTYPE_WRITE));
 	}
 	return false;
 }
